@@ -10,6 +10,7 @@ import dotenv from 'dotenv';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { showSkillMenu } from '../utils/interactive-menu.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -187,28 +188,42 @@ async function runInteractiveMode(forceModel?: string) {
     }
   });
 
-  // Override _ttyWrite to detect "/" and show completions immediately
+  // Override _ttyWrite to detect "/" and show interactive menu
   const originalTtyWrite = (rl as any)._ttyWrite;
-  (rl as any)._ttyWrite = function(s: string, key: any) {
+  (rl as any)._ttyWrite = async function(s: string, key: any) {
     // Call original first
     originalTtyWrite.call(this, s, key);
 
     // Check if current line is exactly "/"
     const currentLine = (this as any).line || '';
     if (currentLine === '/' && s === '/') {
-      // User just typed "/", show all commands
-      setTimeout(() => {
-        console.log('\n' + chalk.cyan.bold('Available commands & skills:'));
-        const cols = 3;
-        for (let i = 0; i < Math.min(allCommands.length, 30); i += cols) {
-          const row = allCommands.slice(i, i + cols);
-          console.log('  ' + row.map(c => chalk.white(c.padEnd(20))).join(''));
-        }
-        if (allCommands.length > 30) {
-          console.log(chalk.gray(`  ... and ${allCommands.length - 30} more`));
-        }
-        console.log(chalk.gray('\nKeep typing to filter • Tab to cycle • Enter to select\n'));
+      // User just typed "/", show interactive menu
+      setTimeout(async () => {
+        // Clear the "/" from the line
+        (this as any).line = '';
+        (this as any).cursor = 0;
         (this as any)._refreshLine();
+
+        // Show interactive menu
+        const selected = await showSkillMenu(allCommands);
+
+        if (selected) {
+          // User selected something, insert it
+          (this as any).line = selected;
+          (this as any).cursor = selected.length;
+          (this as any)._refreshLine();
+
+          // Auto-submit if it's a complete command
+          if (selected.startsWith('/')) {
+            (this as any).emit('line', selected);
+            (this as any).line = '';
+            (this as any).cursor = 0;
+            (this as any).prompt();
+          }
+        } else {
+          // User cancelled, restore prompt
+          (this as any).prompt();
+        }
       }, 10);
     }
   };
