@@ -87,21 +87,42 @@ export class LocalExecutor {
         // Check if model wants to use a tool
         const toolCall = this.toolExecutor.parseToolCall(responseText);
 
-        if (!toolCall || !this.toolsEnabled) {
-          // No tool use, we're done
-          finalResponse = responseText;
+        if (!toolCall || !this.toolsEnabled || !this.toolCatalog) {
+          // No tool use, strip any TOOL_USE artifacts and return
+          finalResponse = this.cleanToolArtifacts(responseText);
           break;
         }
+
+        logger.debug('Tool call detected', { tool: toolCall.tool, params: toolCall.params });
 
         // Execute the tool
         const toolResult = await this.executeToolCall(toolCall.tool, toolCall.params);
 
-        // Add tool result to context for next iteration
-        fullPrompt = `${fullPrompt}\n\nAssistant: ${responseText}\n\n${this.toolExecutor.formatToolResult(toolCall.tool, toolResult)}\n\nContinue your response:`;
+        logger.debug('Tool executed', {
+          tool: toolCall.tool,
+          success: toolResult.success,
+          outputLength: toolResult.output.length
+        });
 
-        // If last iteration, include final response
+        // If tool execution failed and this is first iteration, just return cleaned response
+        if (!toolResult.success && iterationCount === 1) {
+          finalResponse = this.cleanToolArtifacts(responseText);
+          break;
+        }
+
+        // Add tool result to context for next iteration
+        const cleanResponse = this.cleanToolArtifacts(responseText);
+        fullPrompt = `${fullPrompt}\n\nAssistant: ${cleanResponse}\n\n[Tool Result]: ${toolResult.output}\n\nPlease provide your final response based on the tool result:`;
+
+        // If tool succeeded and we have output, that becomes our response
+        if (toolResult.success && toolResult.output) {
+          finalResponse = toolResult.output;
+          break;
+        }
+
+        // If last iteration, include what we have
         if (iterationCount === maxIterations) {
-          finalResponse = responseText + '\n\n' + toolResult.output;
+          finalResponse = toolResult.success ? toolResult.output : this.cleanToolArtifacts(responseText);
           break;
         }
       }
@@ -146,6 +167,13 @@ export class LocalExecutor {
     fullPrompt += `\nTask:\n${prompt}\n`;
 
     return fullPrompt;
+  }
+
+  private cleanToolArtifacts(text: string): string {
+    // Remove TOOL_USE lines and clean up
+    return text
+      .replace(/TOOL_USE:\s*\S+.*$/gm, '')
+      .trim();
   }
 
   private async executeToolCall(tool: string, params: Record<string, any>): Promise<ToolExecutionResult> {

@@ -23,23 +23,41 @@ export class TaskRouter {
   async route(context: TaskContext): Promise<RoutingDecision> {
     const startTime = Date.now();
 
-    // First check if this is a simple skill that can be auto-completed locally
+    // First check if this is a skill invocation
     const skillClassification = this.skillClassifier.classify(context.input);
 
-    if (skillClassification.isSkill && this.skillClassifier.shouldUseLocalForSkill(skillClassification, context.input.length)) {
-      logger.debug('Routing simple skill to local', {
-        skill: skillClassification.skillName,
-        type: skillClassification.skillType
-      });
+    if (skillClassification.isSkill) {
+      // Simple skills go to local
+      if (this.skillClassifier.shouldUseLocalForSkill(skillClassification, context.input.length)) {
+        logger.debug('Routing simple skill to local', {
+          skill: skillClassification.skillName,
+          type: skillClassification.skillType
+        });
 
-      return {
-        target: 'local_code',
-        taskType: 'trivial_edit',
-        complexity: 2,
-        confidence: skillClassification.confidence,
-        reasoning: `Simple skill '${skillClassification.skillName}' can be handled locally`,
-        shouldEscalate: false
-      };
+        return {
+          target: 'local_code',
+          taskType: 'trivial_edit',
+          complexity: 2,
+          confidence: skillClassification.confidence,
+          reasoning: `Simple skill '${skillClassification.skillName}' can be handled locally`,
+          shouldEscalate: false
+        };
+      } else {
+        // Complex skills (like adlc-*) go to Claude
+        logger.debug('Routing complex skill to Claude', {
+          skill: skillClassification.skillName,
+          type: skillClassification.skillType
+        });
+
+        return {
+          target: 'claude',
+          taskType: 'architecture',
+          complexity: 8,
+          confidence: skillClassification.confidence,
+          reasoning: `Complex skill '${skillClassification.skillName}' requires Claude`,
+          shouldEscalate: true
+        };
+      }
     }
 
     const classification = await this.classifier.classify(context.input);

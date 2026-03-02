@@ -44,6 +44,33 @@ export class SkillClassifier {
 
   classify(input: string): SkillClassification {
     const lowerInput = input.toLowerCase().trim();
+    const originalInput = input.trim();
+
+    // Check for ADLC skills (adlc-architect, adlc-pm, etc.)
+    const adlcMatch = originalInput.match(/^(adlc-\w+)\s+(.*)$/i);
+    if (adlcMatch) {
+      const skillName = adlcMatch[1].toLowerCase();
+      logger.debug('Detected ADLC skill', { skill: skillName, args: adlcMatch[2] });
+      return {
+        isSkill: true,
+        skillType: 'complex', // ADLC skills are complex
+        skillName: skillName,
+        confidence: 1.0
+      };
+    }
+
+    // Check for slash command style (/skill-name)
+    const slashMatch = originalInput.match(/^\/([\w-]+)\s*(.*)$/);
+    if (slashMatch) {
+      const skillName = slashMatch[1].toLowerCase();
+      logger.debug('Detected slash skill', { skill: skillName, args: slashMatch[2] });
+      return {
+        isSkill: true,
+        skillType: this.isSimpleSkill(skillName) ? 'simple' : 'complex',
+        skillName: skillName,
+        confidence: 1.0
+      };
+    }
 
     // Check for explicit skill invocation (e.g., "format this", "lint code")
     for (const skill of this.simpleSkills) {
@@ -105,6 +132,10 @@ export class SkillClassifier {
     };
   }
 
+  private isSimpleSkill(skillName: string): boolean {
+    return this.simpleSkills.includes(skillName);
+  }
+
   shouldUseLocalForSkill(classification: SkillClassification, inputLength: number): boolean {
     if (!classification.isSkill) {
       return false;
@@ -115,15 +146,26 @@ export class SkillClassifier {
       return true;
     }
 
-    // For complex skills, use local only if input is short (< 500 chars)
-    if (classification.skillType === 'complex' && inputLength < 500) {
-      logger.debug('Using local for short complex skill', {
-        skill: classification.skillName,
-        length: inputLength
-      });
-      return true;
+    // For complex skills, DON'T use local - route to Claude
+    // Skills like adlc-architect need Claude's full capabilities
+    return false;
+  }
+
+  extractSkillArgs(input: string, skillName: string): string {
+    // Extract arguments from "skill-name args" or "/skill-name args"
+    const patterns = [
+      new RegExp(`^${skillName}\\s+(.+)$`, 'i'),
+      new RegExp(`^/${skillName}\\s+(.+)$`, 'i'),
+      new RegExp(`^(adlc-\\w+)\\s+(.+)$`, 'i')
+    ];
+
+    for (const pattern of patterns) {
+      const match = input.match(pattern);
+      if (match) {
+        return match[match.length - 1].trim();
+      }
     }
 
-    return false;
+    return '';
   }
 }

@@ -16,17 +16,46 @@ export class ToolExecutor {
     try {
       logger.debug('Executing skill', { skill: skill.name, args });
 
-      // Execute via Claude Code CLI if available
-      const command = `claude --skill ${skill.name} ${args}`;
+      // Try multiple command formats
+      const commands = [
+        `claude /${skill.name} ${args}`,           // Slash command format
+        `claude --skill ${skill.name} ${args}`,    // Flag format
+        `echo "/${skill.name} ${args}" | claude`   // Piped format
+      ];
 
-      const { stdout, stderr } = await execAsync(command, {
-        timeout: 30000,
-        maxBuffer: 1024 * 1024 * 10 // 10MB
+      let lastError: any;
+
+      for (const command of commands) {
+        try {
+          const { stdout, stderr } = await execAsync(command, {
+            timeout: 60000,
+            maxBuffer: 1024 * 1024 * 10, // 10MB
+            env: { ...process.env, CLAUDE_NONINTERACTIVE: '1' }
+          });
+
+          const output = stdout || stderr;
+          if (output && output.length > 0) {
+            return {
+              success: true,
+              output: output.trim()
+            };
+          }
+        } catch (error: any) {
+          lastError = error;
+          continue; // Try next format
+        }
+      }
+
+      // All formats failed
+      logger.debug('Skill execution failed (all formats tried)', {
+        skill: skill.name,
+        error: lastError?.message
       });
 
       return {
-        success: true,
-        output: stdout || stderr
+        success: false,
+        output: '',
+        error: `Skill '${skill.name}' not available. Try using Claude directly with: /${skill.name} ${args}`
       };
     } catch (error: any) {
       logger.debug('Skill execution failed', {
@@ -141,7 +170,7 @@ export class ToolExecutor {
 
   parseToolCall(response: string): { tool: string; params: Record<string, any> } | null {
     // Parse "TOOL_USE: tool_name param1=value1 param2=value2"
-    const match = response.match(/TOOL_USE:\s*(\w+)\s+(.+)/i);
+    const match = response.match(/TOOL_USE:\s*([\w-]+)\s+(.+)/i);
     if (!match) return null;
 
     const [, toolName, paramsStr] = match;
@@ -154,9 +183,14 @@ export class ToolExecutor {
       params[key] = value;
     }
 
+    // If no key=value pairs, treat entire string as arguments
+    if (Object.keys(params).length === 0) {
+      params.args = paramsStr.trim();
+    }
+
     // Also check for quoted strings
     const quotedMatch = paramsStr.match(/["']([^"']+)["']/);
-    if (quotedMatch && Object.keys(params).length === 0) {
+    if (quotedMatch && !params.args) {
       params.query = quotedMatch[1];
     }
 
