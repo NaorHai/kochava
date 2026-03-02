@@ -27,37 +27,21 @@ export class TaskRouter {
     const skillClassification = this.skillClassifier.classify(context.input);
 
     if (skillClassification.isSkill) {
-      // Simple skills go to local
-      if (this.skillClassifier.shouldUseLocalForSkill(skillClassification, context.input.length)) {
-        logger.debug('Routing simple skill to local', {
-          skill: skillClassification.skillName,
-          type: skillClassification.skillType
-        });
+      // Try ALL skills locally first to see what works
+      // Let the orchestrator handle escalation if skill execution fails
+      logger.debug('Routing skill to local (will escalate if fails)', {
+        skill: skillClassification.skillName,
+        type: skillClassification.skillType
+      });
 
-        return {
-          target: 'local_code',
-          taskType: 'trivial_edit',
-          complexity: 2,
-          confidence: skillClassification.confidence,
-          reasoning: `Simple skill '${skillClassification.skillName}' can be handled locally`,
-          shouldEscalate: false
-        };
-      } else {
-        // Complex skills (like adlc-*) go to Claude
-        logger.debug('Routing complex skill to Claude', {
-          skill: skillClassification.skillName,
-          type: skillClassification.skillType
-        });
-
-        return {
-          target: 'claude',
-          taskType: 'architecture',
-          complexity: 8,
-          confidence: skillClassification.confidence,
-          reasoning: `Complex skill '${skillClassification.skillName}' requires Claude`,
-          shouldEscalate: true
-        };
-      }
+      return {
+        target: 'local_code',
+        taskType: skillClassification.skillType === 'simple' ? 'trivial_edit' : 'refactor_small',
+        complexity: skillClassification.skillType === 'simple' ? 2 : 6,
+        confidence: skillClassification.confidence,
+        reasoning: `Skill '${skillClassification.skillName}' - will try local first, escalate if needed`,
+        shouldEscalate: false
+      };
     }
 
     const classification = await this.classifier.classify(context.input);

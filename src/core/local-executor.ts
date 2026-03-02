@@ -3,6 +3,7 @@ import { ModelResponse, RouteTarget } from '../types/index.js';
 import logger from '../utils/logger.js';
 import { ToolDiscovery, ToolCatalog } from './tool-discovery.js';
 import { ToolExecutor, ToolExecutionResult } from './tool-executor.js';
+import { SkillTracker } from './skill-tracker.js';
 
 export class LocalExecutor {
   private ollama: Ollama;
@@ -11,6 +12,7 @@ export class LocalExecutor {
   private toolExecutor: ToolExecutor;
   private toolsEnabled: boolean;
   private toolCatalog?: ToolCatalog;
+  private skillTracker?: SkillTracker;
 
   constructor(
     codeModelName: string,
@@ -40,6 +42,10 @@ export class LocalExecutor {
         this.toolsEnabled = false;
       }
     }
+  }
+
+  setSkillTracker(tracker: SkillTracker): void {
+    this.skillTracker = tracker;
   }
 
   async execute(
@@ -188,10 +194,22 @@ export class LocalExecutor {
     // Check if it's a skill
     const skill = this.toolCatalog.skills.find(s => s.name === tool);
     if (skill) {
-      const args = Object.entries(params)
+      const args = params.args || Object.entries(params)
         .map(([k, v]) => `${k}=${v}`)
         .join(' ');
-      return await this.toolExecutor.executeSkill(skill, args);
+
+      const result = await this.toolExecutor.executeSkill(skill, args);
+
+      // Track skill success/failure
+      if (this.skillTracker) {
+        if (result.success) {
+          this.skillTracker.recordLocalSuccess(skill.name);
+        } else {
+          this.skillTracker.recordLocalFailure(skill.name);
+        }
+      }
+
+      return result;
     }
 
     // Check if it's an MCP tool

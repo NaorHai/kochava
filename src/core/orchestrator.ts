@@ -7,6 +7,7 @@ import { MemoryManager } from './memory-manager.js';
 import { EscalationManager } from './escalation.js';
 import { CodeIndexer } from '../retrieval/indexer.js';
 import { Embedder } from '../retrieval/embedder.js';
+import { SkillTracker } from './skill-tracker.js';
 import {
   TaskContext,
   ModelResponse,
@@ -32,6 +33,7 @@ export class AIOrchestrator {
   private memoryManager: MemoryManager;
   private escalationManager: EscalationManager;
   private indexer?: CodeIndexer;
+  private skillTracker: SkillTracker;
   private routingConfig: RoutingConfig;
   private modelConfig: ModelConfig;
   private metrics: UsageMetrics;
@@ -62,6 +64,7 @@ export class AIOrchestrator {
       modelConfig.models.compressor.name
     );
     this.escalationManager = new EscalationManager();
+    this.skillTracker = new SkillTracker();
 
     this.metrics = {
       totalRequests: 0,
@@ -84,10 +87,18 @@ export class AIOrchestrator {
       // Indexer handles logging internally
     }
 
-    // Initialize local executor with tool support
+    // Initialize local executor with tool support and skill tracker
     await this.localExecutor.initialize();
+    this.localExecutor.setSkillTracker(this.skillTracker);
+
+    // Load skill stats
+    await this.skillTracker.load();
 
     logger.debug('AI Orchestrator initialized');
+  }
+
+  getSkillTracker(): SkillTracker {
+    return this.skillTracker;
   }
 
   async process(input: string, codeContext?: string, forceModel?: string): Promise<ModelResponse> {

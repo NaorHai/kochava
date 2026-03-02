@@ -135,10 +135,16 @@ async function runInteractiveMode(forceModel?: string) {
 
   const orchestrator = await initOrchestrator();
 
+  // Load available skills for auto-complete
+  const availableSkills = await getAvailableSkills();
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: chalk.magenta('kochava> ')
+    prompt: chalk.magenta('kochava> '),
+    completer: (line: string) => {
+      return completeSkills(line, availableSkills);
+    }
   });
 
   rl.prompt();
@@ -147,6 +153,13 @@ async function runInteractiveMode(forceModel?: string) {
     const input = line.trim();
 
     if (!input) {
+      rl.prompt();
+      return;
+    }
+
+    // Show skills if user just types "/"
+    if (input === '/') {
+      await showAvailableSkills();
       rl.prompt();
       return;
     }
@@ -173,6 +186,19 @@ async function runInteractiveMode(forceModel?: string) {
 
     if (input === '/help' || input === 'help') {
       displayHelp();
+      rl.prompt();
+      return;
+    }
+
+    if (input === '/skills' || input === 'skills') {
+      await showAvailableSkills();
+      rl.prompt();
+      return;
+    }
+
+    if (input === '/skill-stats' || input === 'skill-stats') {
+      const tracker = orchestrator.getSkillTracker();
+      console.log(tracker.displayStats());
       rl.prompt();
       return;
     }
@@ -270,12 +296,88 @@ function displayMetrics(orchestrator: AIOrchestrator) {
   console.log();
 }
 
+async function getAvailableSkills(): Promise<string[]> {
+  try {
+    const skillsPath = path.join(process.env.HOME || '', '.claude/blueprints/sf-adlc/skills.json');
+    const skillsData = await fs.readFile(skillsPath, 'utf-8');
+    const skillsConfig = JSON.parse(skillsData);
+
+    if (skillsConfig.skills && Array.isArray(skillsConfig.skills)) {
+      return skillsConfig.skills
+        .filter((s: any) => s.name)
+        .map((s: any) => s.name);
+    }
+  } catch (error) {
+    // No skills available
+  }
+
+  return [];
+}
+
+function completeSkills(line: string, skills: string[]): [string[], string] {
+  // If line starts with /, complete skill names
+  if (line.startsWith('/')) {
+    const partial = line.slice(1).toLowerCase();
+    const hits = skills.filter(s => s.toLowerCase().startsWith(partial));
+    return [hits.map(h => `/${h}`), line];
+  }
+
+  // Also complete built-in commands
+  const builtinCommands = ['/help', '/stats', '/reset', '/exit', '/skills'];
+  if (line.startsWith('/')) {
+    const partial = line.toLowerCase();
+    const hits = builtinCommands.filter(c => c.startsWith(partial));
+    return [hits, line];
+  }
+
+  return [[], line];
+}
+
+async function showAvailableSkills() {
+  const skills = await getAvailableSkills();
+
+  if (skills.length === 0) {
+    console.log(chalk.yellow('\n⚠️  No skills found in ~/.claude/blueprints/sf-adlc/skills.json\n'));
+    return;
+  }
+
+  console.log(chalk.magenta.bold('\n🔧 Available Skills\n'));
+
+  // Group skills by category
+  const adlcSkills = skills.filter(s => s.startsWith('adlc-'));
+  const otherSkills = skills.filter(s => !s.startsWith('adlc-'));
+
+  if (adlcSkills.length > 0) {
+    console.log(chalk.cyan('ADLC Workflow:'));
+    adlcSkills.forEach(skill => {
+      console.log(chalk.white(`  /${skill}`));
+    });
+    console.log();
+  }
+
+  if (otherSkills.length > 0) {
+    console.log(chalk.cyan('Other:'));
+    otherSkills.forEach(skill => {
+      console.log(chalk.white(`  /${skill}`));
+    });
+    console.log();
+  }
+
+  console.log(chalk.gray('Type /skill-name to use a skill'));
+  console.log(chalk.gray('Tab to auto-complete skill names\n'));
+}
+
 function displayHelp() {
   console.log(chalk.magenta.bold('\n📖 Kochava Commands\n'));
-  console.log(chalk.white('  /stats  - Show usage statistics'));
-  console.log(chalk.white('  /reset  - Reset session and clear history'));
-  console.log(chalk.white('  /help   - Show this help message'));
-  console.log(chalk.white('  /exit   - Exit kochava'));
+  console.log(chalk.white('  /stats        - Show usage statistics'));
+  console.log(chalk.white('  /skills       - List available skills'));
+  console.log(chalk.white('  /skill-stats  - Show which skills work locally vs need Claude'));
+  console.log(chalk.white('  /reset        - Reset session and clear history'));
+  console.log(chalk.white('  /help         - Show this help message'));
+  console.log(chalk.white('  /exit         - Exit kochava'));
+  console.log(chalk.gray('\nSkills:'));
+  console.log(chalk.white('  /              - Show all skills'));
+  console.log(chalk.white('  /skill-name [args]  - Execute a skill (Tab to auto-complete)'));
   console.log(chalk.gray('\nOptions:'));
   console.log(chalk.white('  -m, --model <type>  Force model (local or claude)'));
   console.log(chalk.white('  -v, --verbose       Enable verbose output'));
