@@ -37,7 +37,7 @@ export class TaskRouter {
     );
 
     if (shouldEscalate && target !== 'claude') {
-      logger.info('Escalating to Claude', {
+      logger.debug('Escalating to Claude', {
         originalTarget: target,
         complexity: complexityScore.score,
         confidence: classification.confidence
@@ -54,7 +54,7 @@ export class TaskRouter {
       shouldEscalate
     };
 
-    logger.info('Routing decision made', {
+    logger.debug('Routing decision made', {
       ...decision,
       latency: Date.now() - startTime
     });

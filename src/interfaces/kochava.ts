@@ -51,6 +51,7 @@ program
   .option('-s, --stats', 'Show usage statistics')
   .option('-r, --reset', 'Reset session and token counters')
   .option('-v, --verbose', 'Enable verbose output')
+  .option('-m, --model <type>', 'Force specific model (local or claude)')
   .option('--file <path>', 'Load code context from file')
   .option('--no-color', 'Disable colored output')
   .action(async (queryParts, options) => {
@@ -66,14 +67,14 @@ program
       }
 
       if (options.chat || options.interactive) {
-        await runInteractiveMode();
+        await runInteractiveMode(options.model);
         return;
       }
 
       const query = queryParts.join(' ');
       if (!query) {
         // Default to interactive mode (like Claude Code CLI)
-        await runInteractiveMode();
+        await runInteractiveMode(options.model);
         return;
       }
 
@@ -87,7 +88,7 @@ program
         }
       }
 
-      await runSingleQuery(query, context, options.verbose);
+      await runSingleQuery(query, context, options.verbose, options.model);
     } catch (error: any) {
       console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
       process.exit(1);
@@ -96,7 +97,7 @@ program
 
 program.parse();
 
-async function runSingleQuery(query: string, context?: string, verbose?: boolean) {
+async function runSingleQuery(query: string, context?: string, verbose?: boolean, forceModel?: string) {
   if (verbose) {
     console.log(chalk.gray('\n→ Initializing kochava...\n'));
   }
@@ -107,7 +108,7 @@ async function runSingleQuery(query: string, context?: string, verbose?: boolean
     console.log(chalk.gray('→ Processing your request...\n'));
   }
 
-  const response = await orchestrator.process(query, context);
+  const response = await orchestrator.process(query, context, forceModel);
 
   console.log(chalk.white(response.content));
 
@@ -119,8 +120,14 @@ async function runSingleQuery(query: string, context?: string, verbose?: boolean
   );
 }
 
-async function runInteractiveMode() {
+async function runInteractiveMode(forceModel?: string) {
   console.log(chalk.magenta(KOCHAVA_ART));
+
+  if (forceModel) {
+    const modelType = forceModel.toLowerCase() === 'claude' ? 'Claude API' : 'Local';
+    console.log(chalk.yellow(`Forcing ${modelType} for all requests\n`));
+  }
+
   console.log(chalk.gray('Ready to help with your coding questions. Type /help for commands or /exit to quit.\n'));
 
   // Suppress verbose logs for smooth conversation
@@ -177,7 +184,7 @@ async function runInteractiveMode() {
       const thinkingWord = thinkingWords[Math.floor(Math.random() * thinkingWords.length)];
       process.stdout.write(chalk.dim(`\n${thinkingWord}...`));
 
-      const response = await orchestrator.process(input);
+      const response = await orchestrator.process(input, undefined, forceModel);
 
       // Clear thinking indicator
       process.stdout.write('\r' + ' '.repeat(50) + '\r');
@@ -185,12 +192,12 @@ async function runInteractiveMode() {
       // Clean output - just the response content
       console.log(chalk.white(`${response.content}\n`));
 
-      // Minimal footer - transparent routing indicator
+      // Minimal footer - just model name
       const modelType = response.model.includes('claude') ? 'cloud' : 'local';
       const modelColor = modelType === 'local' ? chalk.green : chalk.blue;
 
       console.log(
-        chalk.dim(`${modelColor('●')} ${response.latency}ms\n`)
+        chalk.dim(`[${modelColor(response.model)}]\n`)
       );
     } catch (error: any) {
       // Clear thinking indicator on error
@@ -261,6 +268,9 @@ function displayHelp() {
   console.log(chalk.white('  /reset  - Reset session and clear history'));
   console.log(chalk.white('  /help   - Show this help message'));
   console.log(chalk.white('  /exit   - Exit kochava'));
+  console.log(chalk.gray('\nOptions:'));
+  console.log(chalk.white('  -m, --model <type>  Force model (local or claude)'));
+  console.log(chalk.white('  -v, --verbose       Enable verbose output'));
   console.log(chalk.gray('\nPress Ctrl+C to exit at any time'));
   console.log();
 }

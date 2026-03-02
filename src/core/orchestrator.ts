@@ -78,13 +78,13 @@ export class AIOrchestrator {
     try {
       await this.indexer.load();
     } catch (error) {
-      logger.warn('No existing index found, starting fresh');
+      // Indexer handles logging internally
     }
 
-    logger.info('AI Orchestrator initialized');
+    logger.debug('AI Orchestrator initialized');
   }
 
-  async process(input: string, codeContext?: string): Promise<ModelResponse> {
+  async process(input: string, codeContext?: string, forceModel?: string): Promise<ModelResponse> {
     const startTime = Date.now();
     this.metrics.totalRequests++;
 
@@ -99,14 +99,27 @@ export class AIOrchestrator {
 
     const decision = await this.router.route(context);
 
-    const override = await this.supervisor.shouldOverrideRouting(decision, input);
-    if (override.override) {
-      this.escalationManager.logEscalation(
-        decision,
-        decision.target,
-        override.reason || 'Supervisor override'
-      );
-      decision.target = 'claude';
+    // Handle forced model override
+    if (forceModel) {
+      const forceLower = forceModel.toLowerCase();
+      if (forceLower === 'claude') {
+        decision.target = 'claude';
+        logger.debug('Forcing Claude model');
+      } else if (forceLower === 'local') {
+        decision.target = decision.taskType === 'explanation' ? 'local_compress' : 'local_code';
+        logger.debug('Forcing local model');
+      }
+    } else {
+      // Only apply supervisor override if model is not forced
+      const override = await this.supervisor.shouldOverrideRouting(decision, input);
+      if (override.override) {
+        this.escalationManager.logEscalation(
+          decision,
+          decision.target,
+          override.reason || 'Supervisor override'
+        );
+        decision.target = 'claude';
+      }
     }
 
     let response: ModelResponse;

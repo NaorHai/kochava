@@ -50,7 +50,7 @@ export class LocalExecutor {
 
       const latency = Date.now() - startTime;
 
-      logger.info('Local model executed', {
+      logger.debug('Local model executed', {
         model: modelName,
         target,
         latency,

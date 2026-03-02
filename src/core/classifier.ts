@@ -32,7 +32,7 @@ export class TaskClassifier {
 
       const result = this.parseClassificationResponse(response.response, input);
 
-      logger.info('Task classified', {
+      logger.debug('Task classified', {
         taskType: result.taskType,
         confidence: result.confidence,
         latency: Date.now() - startTime,

@@ -79,9 +79,15 @@ export class CodeIndexer {
       const data = await fs.readFile(this.indexPath, 'utf-8');
       this.chunks = JSON.parse(data);
       logger.info('Index loaded', { path: this.indexPath, chunks: this.chunks.length });
-    } catch (error) {
-      logger.warn('Failed to load index', { error });
-      this.chunks = [];
+    } catch (error: any) {
+      // Silently initialize empty index if file doesn't exist yet
+      if (error.code === 'ENOENT') {
+        this.chunks = [];
+      } else {
+        // Only warn for actual errors (permissions, corruption, etc.)
+        logger.warn('Failed to load index', { error });
+        this.chunks = [];
+      }
     }
   }
 
