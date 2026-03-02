@@ -42,7 +42,7 @@ const KOCHAVA_ART = `
 program
   .name('kochava')
   .description('Intelligent AI routing with local models and Claude')
-  .version('1.0.1', '-v, --version', 'Output the current version')
+  .version('1.1.0', '-v, --version', 'Output the current version')
   .usage('[options] [query]');
 
 program
