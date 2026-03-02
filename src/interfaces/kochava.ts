@@ -3,6 +3,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import * as readline from 'readline';
+import { emitKeypressEvents } from 'readline';
 import { AIOrchestrator } from '../core/orchestrator.js';
 import { RoutingConfig, ModelConfig } from '../types/index.js';
 import logger from '../utils/logger.js';
@@ -188,9 +189,33 @@ async function runInteractiveMode(forceModel?: string) {
     }
   });
 
+  // Auto-complete trigger on "/" keystroke
+  const stdin = process.stdin;
+
+  if (stdin.isTTY) {
+    emitKeypressEvents(stdin);
+    if (stdin.setRawMode) {
+      stdin.setRawMode(true);
+    }
+
+    stdin.on('keypress', (str, key) => {
+      // Track current line content
+      if (str === '/') {
+        // User just typed /, trigger auto-complete
+        setTimeout(() => {
+          const lineContent = (rl as any).line || '';
+          if (lineContent.trim() === '/') {
+            // Auto-trigger completion
+            (rl as any)._tabComplete();
+          }
+        }, 10);
+      }
+    });
+  }
+
   // Show startup tip
   if (availableSkills.length > 0) {
-    console.log(chalk.dim(`💡 Tip: Try typing "/" and pressing Tab\n`));
+    console.log(chalk.dim(`💡 Tip: Type "/" to see all skills\n`));
   }
 
   rl.prompt();
