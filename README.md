@@ -51,8 +51,8 @@ Choose: **1) Docker** (recommended) or **2) Local**
 Then use from anywhere:
 
 ```bash
-kochava "format this: function foo(){return 1}"
-kochava --chat           # Interactive mode
+kochava                  # Start interactive conversation (default)
+kochava "your question"  # Single query mode
 kochava --stats          # Show statistics
 kochava --file code.ts "explain this"
 ```

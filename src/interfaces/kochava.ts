@@ -16,6 +16,11 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
+// Suppress verbose logs in interactive mode for smooth conversation
+if (process.argv.length === 2 || process.argv.includes('--chat') || process.argv.includes('-c') || process.argv.includes('--interactive') || process.argv.includes('-i')) {
+  process.env.LOG_LEVEL = 'error';
+}
+
 const program = new Command();
 
 const KOCHAVA_ART = `
@@ -67,9 +72,8 @@ program
 
       const query = queryParts.join(' ');
       if (!query) {
-        // Show banner before help
-        console.log(chalk.magenta(KOCHAVA_ART));
-        program.help();
+        // Default to interactive mode (like Claude Code CLI)
+        await runInteractiveMode();
         return;
       }
 
@@ -117,8 +121,10 @@ async function runSingleQuery(query: string, context?: string, verbose?: boolean
 
 async function runInteractiveMode() {
   console.log(chalk.magenta(KOCHAVA_ART));
-  console.log(chalk.gray('Type your questions or commands. Use Ctrl+C or type "exit" to quit.\n'));
-  console.log(chalk.gray('Commands: /stats, /reset, /help, /exit\n'));
+  console.log(chalk.gray('Ready to help with your coding questions. Type /help for commands or /exit to quit.\n'));
+
+  // Suppress verbose logs for smooth conversation
+  process.env.LOG_LEVEL = 'error';
 
   const orchestrator = await initOrchestrator();
 
@@ -138,6 +144,7 @@ async function runInteractiveMode() {
       return;
     }
 
+    // Handle commands without thinking indicator
     if (input === '/exit' || input === 'exit' || input === '/quit' || input === 'quit') {
       console.log(chalk.magenta('\nGoodbye! 👋\n'));
       rl.close();
@@ -152,7 +159,7 @@ async function runInteractiveMode() {
 
     if (input === '/reset' || input === 'reset') {
       orchestrator.resetSession();
-      console.log(chalk.yellow('✓ Session reset\n'));
+      console.log(chalk.yellow('\n✓ Session reset\n'));
       rl.prompt();
       return;
     }
@@ -163,20 +170,32 @@ async function runInteractiveMode() {
       return;
     }
 
+    // Process regular queries
     try {
+      // Show thinking indicator
+      const thinkingWords = ['Thinking', 'Pondering', 'Analyzing', 'Processing', 'Considering', 'Evaluating'];
+      const thinkingWord = thinkingWords[Math.floor(Math.random() * thinkingWords.length)];
+      process.stdout.write(chalk.dim(`\n${thinkingWord}...`));
+
       const response = await orchestrator.process(input);
 
-      console.log(chalk.white(`\n${response.content}\n`));
+      // Clear thinking indicator
+      process.stdout.write('\r' + ' '.repeat(50) + '\r');
 
+      // Clean output - just the response content
+      console.log(chalk.white(`${response.content}\n`));
+
+      // Minimal footer - transparent routing indicator
       const modelType = response.model.includes('claude') ? 'cloud' : 'local';
       const modelColor = modelType === 'local' ? chalk.green : chalk.blue;
-      const costIndicator = modelType === 'local' ? chalk.green('FREE') : chalk.yellow('~$0.01-0.05');
 
       console.log(
-        chalk.gray(`[${modelColor(response.model)} • ${response.tokens} tokens • ${response.latency}ms • ${costIndicator}]\n`)
+        chalk.dim(`${modelColor('●')} ${response.latency}ms\n`)
       );
     } catch (error: any) {
-      console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
+      // Clear thinking indicator on error
+      process.stdout.write('\r' + ' '.repeat(50) + '\r');
+      console.error(chalk.red(`✗ ${error.message}\n`));
     }
 
     rl.prompt();
