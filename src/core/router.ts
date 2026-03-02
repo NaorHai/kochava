@@ -1,13 +1,15 @@
 import { TaskClassifier } from './classifier.js';
 import { ComplexityScorer } from './complexity.js';
 import { SkillClassifier } from './skill-classifier.js';
-import { RoutingDecision, TaskContext, RoutingConfig, ModelConfig } from '../types/index.js';
+import { FastRouter } from './fast-router.js';
+import { RoutingDecision, TaskContext, RoutingConfig, ModelConfig, RouteTarget } from '../types/index.js';
 import logger from '../utils/logger.js';
 
 export class TaskRouter {
   private classifier: TaskClassifier;
   private complexityScorer: ComplexityScorer;
   private skillClassifier: SkillClassifier;
+  private fastRouter: FastRouter;
   private routingConfig: RoutingConfig;
 
   constructor(routingConfig: RoutingConfig, modelConfig: ModelConfig) {
@@ -17,6 +19,7 @@ export class TaskRouter {
     );
     this.complexityScorer = new ComplexityScorer();
     this.skillClassifier = new SkillClassifier();
+    this.fastRouter = new FastRouter();
     this.routingConfig = routingConfig;
   }
 
@@ -27,23 +30,40 @@ export class TaskRouter {
     const skillClassification = this.skillClassifier.classify(context.input);
 
     if (skillClassification.isSkill) {
-      // Try ALL skills locally first to see what works
-      // Let the orchestrator handle escalation if skill execution fails
-      logger.debug('Routing skill to local (will escalate if fails)', {
+      logger.debug('Routing skill to local_general', {
         skill: skillClassification.skillName,
         type: skillClassification.skillType
       });
 
       return {
-        target: 'local_code',
+        target: 'local_general',
         taskType: skillClassification.skillType === 'simple' ? 'trivial_edit' : 'refactor_small',
         complexity: skillClassification.skillType === 'simple' ? 2 : 6,
         confidence: skillClassification.confidence,
-        reasoning: `Skill '${skillClassification.skillName}' - will try local first, escalate if needed`,
+        reasoning: `Skill '${skillClassification.skillName}' invocation`,
         shouldEscalate: false
       };
     }
 
+    // Try fast-path heuristic routing first
+    const fastTarget = this.fastRouter.tryFastRoute(context);
+
+    if (fastTarget) {
+      // Fast route succeeded - skip classifier
+      const quickComplexity = this.estimateComplexity(fastTarget, context);
+
+      return {
+        target: fastTarget,
+        taskType: this.inferTaskType(fastTarget),
+        complexity: quickComplexity,
+        confidence: 0.85, // High confidence from heuristics
+        reasoning: `Fast-path routing based on heuristics`,
+        shouldEscalate: false
+      };
+    }
+
+    // Ambiguous case - use classifier
+    logger.debug('Using classifier for ambiguous case');
     const classification = await this.classifier.classify(context.input);
 
     const complexityScore = this.complexityScorer.score(
@@ -84,6 +104,22 @@ export class TaskRouter {
     });
 
     return decision;
+  }
+
+  private estimateComplexity(target: RouteTarget, context: TaskContext): number {
+    if (target === 'claude') return 8;
+    if (context.fileCount && context.fileCount > 2) return 6;
+    return 3;
+  }
+
+  private inferTaskType(target: RouteTarget): 'trivial_edit' | 'explanation' | 'architecture' {
+    const mapping: Record<RouteTarget, 'trivial_edit' | 'explanation' | 'architecture'> = {
+      'claude': 'architecture',
+      'local_code': 'trivial_edit',
+      'local_general': 'explanation',
+      'local_compress': 'explanation'
+    };
+    return mapping[target] || 'explanation';
   }
 
   private shouldEscalateToCloud(

@@ -55,6 +55,8 @@ export class TaskClassifier {
 
 ${taskDescriptions}
 
+Focus on task complexity and type, not on whether tools are needed.
+
 User request: "${input}"
 
 Respond in this exact format:

@@ -50,6 +50,7 @@ export class AIOrchestrator {
       modelConfig.models.codeEditor.name,
       modelConfig.models.compressor.name,
       modelConfig.models.general.name,
+      modelConfig.models.embedding.name,
       enableTools
     );
 
@@ -145,7 +146,7 @@ export class AIOrchestrator {
         decision.target = 'claude';
         logger.debug('Forcing Claude model');
       } else if (forceLower === 'local') {
-        decision.target = this.selectLocalModel(input, decision.taskType);
+        // Keep the router's decision (it already chose local_code/local_compress/local_general)
         logger.debug('Forcing local model', { target: decision.target });
       }
     } else {
@@ -172,10 +173,9 @@ export class AIOrchestrator {
         response = await this.handleClaudeFailure(error, decision, input, codeContext, context);
       }
     } else {
-      // Auto-detect if this should use general model
-      const target = this.selectLocalModel(input, decision.taskType);
+      // Use the router's decision (already chose local_code/local_compress/local_general based on tool requirements)
       const formattedHistory = this.formatHistoryForLocal(context.history);
-      response = await this.executeLocally(target, input, codeContext, formattedHistory);
+      response = await this.executeLocally(decision.target, input, codeContext, formattedHistory);
       this.metrics.localRequests++;
 
       const estimatedClaudeTokens = Math.ceil(response.tokens * 1.5);
@@ -214,12 +214,13 @@ export class AIOrchestrator {
     });
 
     this.escalationManager.logEscalation(
-      { ...decision, target: 'local_code' },
+      decision,
       'claude',
       `Claude failed: ${errorMessage}`
     );
 
-    const fallbackTarget = this.selectLocalModel(input, decision.taskType);
+    // Use the original router decision for fallback
+    const fallbackTarget = decision.target === 'claude' ? 'local_code' : decision.target;
 
     try {
       const formattedHistory = this.formatHistoryForLocal(context.history);
@@ -379,34 +380,6 @@ export class AIOrchestrator {
     return history
       .map(turn => `${turn.role === 'user' ? 'User' : 'Assistant'}: ${turn.content}`)
       .join('\n\n');
-  }
-
-  private selectLocalModel(input: string, taskType: string): 'local_code' | 'local_compress' | 'local_general' {
-    const lowerInput = input.toLowerCase();
-
-    // Check for MCP/API/tool-related keywords
-    const mcpKeywords = [
-      'github', 'pr', 'pull request', 'repo', 'repository',
-      'slack', 'message', 'channel',
-      'confluence', 'page', 'document',
-      'gus', 'work item', 'w-',
-      'get my', 'find my', 'search for', 'list',
-      'api', 'fetch', 'retrieve', 'query'
-    ];
-
-    const isMCPTask = mcpKeywords.some(keyword => lowerInput.includes(keyword));
-
-    if (isMCPTask) {
-      return 'local_general';
-    }
-
-    // Route by task type
-    if (taskType === 'explanation') {
-      return 'local_compress';
-    }
-
-    // Default to code editor
-    return 'local_code';
   }
 
   private logRequest(

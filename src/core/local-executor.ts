@@ -4,12 +4,14 @@ import logger from '../utils/logger.js';
 import { ToolDiscovery, ToolCatalog } from './tool-discovery.js';
 import { ToolExecutor, ToolExecutionResult } from './tool-executor.js';
 import { SkillTracker } from './skill-tracker.js';
+import { SemanticToolRouter } from './semantic-tool-router.js';
 
 export class LocalExecutor {
   private ollama: Ollama;
   private modelMap: Map<RouteTarget, string>;
   private toolDiscovery: ToolDiscovery;
   private toolExecutor: ToolExecutor;
+  private semanticToolRouter: SemanticToolRouter;
   private toolsEnabled: boolean;
   private toolCatalog?: ToolCatalog;
   private skillTracker?: SkillTracker;
@@ -18,6 +20,7 @@ export class LocalExecutor {
     codeModelName: string,
     compressModelName: string,
     generalModelName: string,
+    embeddingModelName: string,
     enableTools: boolean = true
   ) {
     this.ollama = new Ollama({ host: process.env.OLLAMA_HOST || 'http://localhost:11434' });
@@ -28,6 +31,7 @@ export class LocalExecutor {
     ]);
     this.toolDiscovery = new ToolDiscovery();
     this.toolExecutor = new ToolExecutor();
+    this.semanticToolRouter = new SemanticToolRouter(embeddingModelName);
     this.toolsEnabled = enableTools;
   }
 
@@ -39,6 +43,10 @@ export class LocalExecutor {
           skills: this.toolCatalog.skills.length,
           mcpTools: this.toolCatalog.mcpTools.length
         });
+
+        // Initialize semantic tool router with tool embeddings
+        await this.semanticToolRouter.initialize(this.toolCatalog);
+        logger.debug('Semantic tool router initialized');
       } catch (error) {
         logger.debug('Tool discovery failed, continuing without tools', { error });
         this.toolsEnabled = false;
@@ -79,8 +87,8 @@ export class LocalExecutor {
         };
       }
 
-      // Build prompt with tool awareness and conversation history
-      let fullPrompt = this.buildPromptWithTools(prompt, context, history);
+      // Build prompt with semantically relevant tools
+      let fullPrompt = await this.buildPromptWithTools(prompt, context, history);
 
       // Execute with tool loop (max 3 tool calls)
       let finalResponse = '';
@@ -104,6 +112,11 @@ export class LocalExecutor {
 
         totalTokens += response.eval_count || 0;
         const responseText = response.response;
+
+        logger.debug('Model raw response', {
+          responseText: responseText.substring(0, 500),
+          iteration: iterationCount
+        });
 
         // Check if model wants to use a tool
         const toolCall = this.toolExecutor.parseToolCall(responseText);
@@ -170,14 +183,15 @@ export class LocalExecutor {
     }
   }
 
-  private buildPromptWithTools(prompt: string, context?: string, history?: string): string {
+  private async buildPromptWithTools(prompt: string, context?: string, history?: string): Promise<string> {
     let fullPrompt = '';
 
-    // Only add tools if the prompt seems tool-related (optimization)
-    const needsTools = this.promptNeedsTools(prompt);
-    if (needsTools && this.toolsEnabled && this.toolCatalog) {
-      const toolsSection = this.toolDiscovery.formatToolsForPrompt(this.toolCatalog);
-      fullPrompt += toolsSection;
+    // Use semantic tool router to find relevant tools
+    if (this.toolsEnabled && this.semanticToolRouter.isInitialized()) {
+      const relevantTools = await this.semanticToolRouter.getRelevantToolDescriptions(prompt, 10);
+      if (relevantTools) {
+        fullPrompt += relevantTools;
+      }
     }
 
     // Add conversation history for context continuity
@@ -307,26 +321,6 @@ export class LocalExecutor {
     return {
       output: result.error || `Failed to execute skill '/${skillName}'. The skill may not be properly configured.`
     };
-  }
-
-  private promptNeedsTools(prompt: string): boolean {
-    const lowerPrompt = prompt.toLowerCase();
-
-    // Check for tool-related keywords
-    const toolKeywords = [
-      'search', 'find', 'query', 'get', 'fetch', 'retrieve',
-      'slack', 'github', 'confluence', 'gus', 'cuala',
-      'w-', 'work item', 'pull request', 'pr', 'issue',
-      'test', 'execute', 'run', 'memory', 'save', 'remember'
-    ];
-
-    // Don't include tools for direct skill invocations (handled separately)
-    if (lowerPrompt.startsWith('/')) {
-      return false;
-    }
-
-    // Check for tool keywords
-    return toolKeywords.some(keyword => lowerPrompt.includes(keyword));
   }
 
   private cleanToolArtifacts(text: string): string {
