@@ -1,4 +1,4 @@
-# AI Router
+# Kochava!
 
 An autonomous multi-model routing system that intelligently routes coding requests between local Small Language Models (SLMs) and Claude API, minimizing token consumption while maintaining quality.
 
