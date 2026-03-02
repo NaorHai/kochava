@@ -7,7 +7,7 @@
       "temperature": 0.1
     },
     "compressor": {
-      "name": "llama3.1:8b",
+      "name": "qwen2.5-coder:7b",
       "purpose": "Context compression and summarization",
       "maxTokens": 2048,
       "temperature": 0.3
@@ -19,7 +19,7 @@
       "temperature": 0.2
     },
     "general": {
-      "name": "llama3.1:8b",
+      "name": "qwen2.5-coder:7b",
       "purpose": "General tasks, conversations, MCP/API invocations, reading from services",
       "maxTokens": 2048,
       "temperature": 0.3
@@ -111,10 +111,16 @@
     ],
     "general": [
       {
-        "name": "llama3.1:8b",
-        "description": "Llama 3.1 - Best for general tasks and tool usage",
+        "name": "qwen2.5-coder:7b",
+        "description": "Qwen 2.5 Coder - Excellent for tool usage, MCP, and API calls",
         "size": "5GB",
         "recommended": true
+      },
+      {
+        "name": "llama3.1:8b",
+        "description": "Llama 3.1 - Good for general tasks and conversations",
+        "size": "5GB",
+        "recommended": false
       },
       {
         "name": "llama3.2:3b",
@@ -156,8 +162,8 @@
       "description": "Best balance of speed, quality, and memory usage",
       "models": {
         "codeEditor": "qwen2.5-coder:7b",
-        "compressor": "llama3.1:8b",
-        "general": "llama3.1:8b",
+        "compressor": "qwen2.5-coder:7b",
+        "general": "qwen2.5-coder:7b",
         "classifier": "llama3.2:3b",
         "embedding": "nomic-embed-text"
       }
