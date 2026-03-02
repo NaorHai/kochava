@@ -21,13 +21,15 @@ const program = new Command();
 const KOCHAVA_ART = `
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║     █████   ██████   █████  ██   ██  █████  ██    ██     ║
-║    ██   ██ ██    ██ ██   ██ ██   ██ ██   ██ ██    ██     ║
-║    ███████ ██    ██ ██      ███████ ███████ ██    ██     ║
-║    ██   ██ ██    ██ ██   ██ ██   ██ ██   ██  ██  ██      ║
-║    ██   ██  ██████   █████  ██   ██ ██   ██   ████       ║
+║     ██╗  ██╗ ██████╗  ██████╗██╗  ██╗ █████╗ ██╗   ██╗  ║
+║     ██║ ██╔╝██╔═══██╗██╔════╝██║  ██║██╔══██╗██║   ██║  ║
+║     █████╔╝ ██║   ██║██║     ███████║███████║██║   ██║  ║
+║     ██╔═██╗ ██║   ██║██║     ██╔══██║██╔══██║╚██╗ ██╔╝  ║
+║     ██║  ██╗╚██████╔╝╚██████╗██║  ██║██║  ██║ ╚████╔╝   ║
+║     ╚═╝  ╚═╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝    ║
 ║                                                           ║
 ║         Intelligent AI Router • Local + Cloud            ║
+║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
 `;
 
@@ -112,7 +114,7 @@ async function runSingleQuery(query: string, context?: string, verbose?: boolean
 }
 
 async function runInteractiveMode() {
-  console.log(chalk.cyan(KOCHAVA_ART));
+  console.log(chalk.magenta(KOCHAVA_ART));
   console.log(chalk.gray('Type your questions or commands. Use Ctrl+C or type "exit" to quit.\n'));
   console.log(chalk.gray('Commands: /stats, /reset, /help, /exit\n'));
 
@@ -121,7 +123,7 @@ async function runInteractiveMode() {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: chalk.cyan('kochava> ')
+    prompt: chalk.magenta('kochava> ')
   });
 
   rl.prompt();
@@ -135,7 +137,7 @@ async function runInteractiveMode() {
     }
 
     if (input === '/exit' || input === 'exit' || input === '/quit' || input === 'quit') {
-      console.log(chalk.cyan('\nGoodbye! 👋\n'));
+      console.log(chalk.magenta('\nGoodbye! 👋\n'));
       rl.close();
       process.exit(0);
     }
@@ -179,7 +181,7 @@ async function runInteractiveMode() {
   });
 
   rl.on('close', () => {
-    console.log(chalk.cyan('\nGoodbye! 👋\n'));
+    console.log(chalk.magenta('\nGoodbye! 👋\n'));
     process.exit(0);
   });
 }
@@ -215,7 +217,7 @@ function displayMetrics(orchestrator: AIOrchestrator) {
     ? (metrics.localRequests / metrics.totalRequests * 100).toFixed(1)
     : '0';
 
-  console.log(chalk.cyan.bold('\n📊 Usage Statistics\n'));
+  console.log(chalk.magenta.bold('\n📊 Usage Statistics\n'));
   console.log(chalk.white(`Total Requests:    ${metrics.totalRequests}`));
   console.log(chalk.green(`Local (FREE):      ${metrics.localRequests} (${localRatio}%)`));
   console.log(chalk.blue(`Claude (Cloud):    ${metrics.claudeRequests}`));
@@ -233,7 +235,7 @@ function displayMetrics(orchestrator: AIOrchestrator) {
 }
 
 function displayHelp() {
-  console.log(chalk.cyan.bold('\n📖 Kochava Commands\n'));
+  console.log(chalk.magenta.bold('\n📖 Kochava Commands\n'));
   console.log(chalk.white('  /stats  - Show usage statistics'));
   console.log(chalk.white('  /reset  - Reset session and clear history'));
   console.log(chalk.white('  /help   - Show this help message'));

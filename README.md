@@ -1,283 +1,289 @@
-# Kochava!
+# Kochava
 
-An autonomous multi-model routing system that intelligently routes coding requests between local Small Language Models (SLMs) and Claude API, minimizing token consumption while maintaining quality.
-
-## Features
-
-- **FREE Local Models**: 60-80% of requests handled by FREE local SLMs (no API costs!)
-- **Automatic Fallback**: Seamlessly switches to local models when Claude credits run out
-- **Intelligent Routing**: Automatically classifies tasks and routes to optimal model
-- **Privacy-First**: Your code never leaves your machine for local tasks
-- **Claude Integration**: Escalates complex reasoning to Claude API only when needed (20-40%)
-- **Token Optimization**: 70%+ reduction in Claude token usage = major cost savings
-- **Context Management**: Automatic context compression and memory summarization
-- **Multiple Interfaces**: CLI, HTTP server, and Claude plugin modes
-- **Retrieval System**: Semantic code search with embeddings
-- **Comprehensive Logging**: Track routing decisions, token usage, and escalations
-- **Offline Capable**: Works without internet for local model tasks
-- **Zero Downtime**: Never fails - always falls back to local models gracefully
-
-## Architecture
+> Intelligent AI router that runs **60-80% of coding tasks FREE** on local models, escalates complex tasks to Claude API only when needed.
 
 ```
-User Input
-    ↓
-Intent Classifier (Local SLM)
-    ↓
-Complexity Scorer
-    ↓
-Task Router
-    ↓
-┌──────────────┬───────────────┬──────────────┐
-│ Local SLM #1 │ Local SLM #2  │   Claude     │
-│ Classification │ Compression │ Deep Reason  │
-└──────────────┴───────────────┴──────────────┘
-    ↓
-Output Regulator
-    ↓
-User Output
+╔═══════════════════════════════════════════════════════════╗
+║     ██╗  ██╗ ██████╗  ██████╗██╗  ██╗ █████╗ ██╗   ██╗  ║
+║     ██║ ██╔╝██╔═══██╗██╔════╝██║  ██║██╔══██╗██║   ██║  ║
+║     █████╔╝ ██║   ██║██║     ███████║███████║██║   ██║  ║
+║     ██╔═██╗ ██║   ██║██║     ██╔══██║██╔══██║╚██╗ ██╔╝  ║
+║     ██║  ██╗╚██████╔╝╚██████╗██║  ██║██║  ██║ ╚████╔╝   ║
+║     ╚═╝  ╚═╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝    ║
+║         Intelligent AI Router • Local + Cloud            ║
+╚═══════════════════════════════════════════════════════════╝
 ```
+
+## Why Kochava?
+
+- 🎉 **FREE Local Models** - Most tasks run FREE (formatting, explanations, simple edits)
+- 🧠 **Smart Routing** - Automatically decides local vs Claude based on complexity
+- 💰 **70%+ Cost Savings** - Minimize Claude API usage without sacrificing quality
+- 🔒 **Privacy First** - Your code never leaves your machine for local tasks
+- 🚀 **Auto Fallback** - Seamlessly switches to local when Claude credits run out
+- 📊 **Full Transparency** - Track every decision, token, and cost
 
 ## Quick Start
 
-### One-Command Installation
+### One-Command Setup
 
 ```bash
-cd ~/Documents/Private/kochava
-./scripts/bootstrap.sh
+git clone https://github.com/NaorHai/kochava.git
+cd kochava
+./setup.sh
 ```
 
-This will:
-1. Install Ollama (FREE local model server)
-2. Download 4 FREE models (~12GB, one-time)
-3. Set up environment
-4. Build the project
-5. Run verification tests
+Choose installation type:
+- **Docker** (Recommended) - Zero dependencies, everything in containers
+- **Local** - Native installation with Ollama
 
-**All local models are FREE and run offline!** See [LOCAL_MODELS.md](LOCAL_MODELS.md) for details.
-
-### Manual Installation
-
-1. Install Ollama: https://ollama.ai
-2. Run setup scripts:
-   ```bash
-   bash scripts/setup_env.sh
-   bash scripts/install_models.sh
-   npm run build
-   ```
-3. Configure `.env` with your `ANTHROPIC_API_KEY`
+That's it! Setup handles everything:
+- ✅ Installs Ollama (local AI server)
+- ✅ Downloads 4 FREE models (~12GB)
+- ✅ Builds the project
+- ✅ Runs verification
 
 ## Usage
 
-### CLI Mode (Interactive)
+### Interactive Chat
 
 ```bash
-./run.sh
+npm run kochava -- --chat
 ```
 
-Interactive commands:
-- `/stats` - Show usage statistics
-- `/reset` - Reset session
-- `/help` - Show help
-- `/quit` - Exit
-
-### CLI Mode (Single Query)
+### Single Query
 
 ```bash
-./run.sh query "Explain this function" --context code.ts
+npm run kochava -- "format this: function foo(){return 1}"
 ```
 
-### HTTP Server Mode
+### With File Context
 
 ```bash
-npm run server
+npm run kochava -- --file mycode.ts "explain this code"
 ```
 
-Endpoints:
-- `POST /api/process` - Process a query
-- `POST /api/index` - Index codebase
-- `GET /api/metrics` - Get usage metrics
-- `POST /api/reset` - Reset session
+### Show Statistics
 
-Example:
 ```bash
+npm run kochava -- --stats
+```
+
+## What Gets Routed Where?
+
+| Task Type | Route | Examples |
+|-----------|-------|----------|
+| **Formatting** | 🟢 Local FREE | Code formatting, style fixes |
+| **Explanations** | 🟢 Local FREE | "Explain this function", documentation |
+| **Simple Edits** | 🟢 Local FREE | Renames, small changes |
+| **Small Refactors** | 🟢 Local FREE | Single-file refactoring |
+| **Complex Debug** | 🔵 Claude API | Multi-file debugging, root cause analysis |
+| **Architecture** | 🔵 Claude API | Design decisions, system patterns |
+| **Deep Reasoning** | 🔵 Claude API | Cross-file analysis, complex logic |
+
+## Docker Usage
+
+### Run Single Query
+```bash
+docker-compose run --rm kochava "your question here"
+```
+
+### Start HTTP Server (Port 3000)
+```bash
+docker-compose --profile server up -d
 curl -X POST http://localhost:3000/api/process \
   -H "Content-Type: application/json" \
-  -d '{"input": "Format this code", "context": "function foo(){return 1}"}'
+  -d '{"input": "format this: function foo(){return 1}"}'
 ```
 
-### Claude Plugin Mode
-
+### Start Claude Plugin (Port 3001)
 ```bash
-npm run plugin
+docker-compose --profile plugin up -d
 ```
 
-Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+Add to `claude_desktop_config.json`:
 ```json
 {
-  "plugins": [
-    {
-      "url": "http://localhost:3001",
-      "enabled": true
-    }
-  ]
+  "plugins": [{"url": "http://localhost:3001", "enabled": true}]
 }
 ```
 
 ## Configuration
 
-### Model Configuration (`config/model.config.json`)
+### Add Claude API Key (Optional)
 
-Defines which Ollama models to use:
-- `classifier`: Intent classification (llama3.2:3b)
-- `compressor`: Context compression (llama3.1:8b)
-- `codeEditor`: Code editing (qwen2.5-coder:7b)
-- `embedding`: Semantic search (nomic-embed-text)
-
-### Routing Configuration (`config/routing.config.json`)
-
-Defines routing rules:
-- `taskTypes`: Classification categories and routing targets
-- `complexityThresholds`: When to escalate to Claude
-- `contextOptimization`: Token optimization settings
-- `memoryManagement`: Conversation history management
-- `escalation`: Supervisor and override settings
-
-## Task Types
-
-| Task Type | Route | Description |
-|-----------|-------|-------------|
-| `trivial_edit` | Local | Simple code changes, renames |
-| `formatting` | Local | Code formatting, style fixes |
-| `explanation` | Local | Code explanations, documentation |
-| `refactor_small` | Local | Small refactoring within a file |
-| `deep_debug` | Claude | Complex debugging |
-| `architecture` | Claude | Design decisions, patterns |
-| `multi_file_reasoning` | Claude | Cross-file analysis |
-
-## Logging
-
-Logs are written to `logs/`:
-- `routing.log` - Routing decisions and system events
-- `token_usage.log` - Token consumption tracking
-- `escalation.log` - Task escalations to Claude
-
-## Performance Goals
-
-- ✅ 60-80% of requests handled locally
-- ✅ 70%+ reduction in Claude token usage
-- ✅ Local task latency under 3 seconds
-- ✅ Claude calls minimized and measurable
-
-## Project Structure
-
-```
-ai-router/
-├── config/              # Configuration files
-├── src/
-│   ├── core/           # Core routing logic
-│   │   ├── classifier.ts
-│   │   ├── complexity.ts
-│   │   ├── router.ts
-│   │   ├── context_optimizer.ts
-│   │   ├── escalation.ts
-│   │   ├── local-executor.ts
-│   │   ├── memory-manager.ts
-│   │   └── orchestrator.ts
-│   ├── claude/         # Claude API integration
-│   ├── retrieval/      # Embeddings and search
-│   ├── interfaces/     # CLI, server, plugin
-│   ├── types/          # TypeScript types
-│   └── utils/          # Utilities
-├── scripts/            # Setup and maintenance
-├── plugin/             # Claude plugin specs
-└── logs/               # Runtime logs
+Edit `.env`:
+```bash
+ANTHROPIC_API_KEY=sk-ant-your-key-here  # Optional - leave as "none" for FREE-only
+CLAUDE_TOKEN_BUDGET=8000                 # Max tokens per session
+AUTO_FALLBACK_ENABLED=true               # Auto-switch to local on errors
 ```
 
-## Development
+### Customize Routing Rules
+
+Edit `config/routing.config.json`:
+- Adjust complexity thresholds
+- Modify task type routing
+- Configure fallback behavior
+
+## FREE Local Models
+
+All models run 100% FREE via Ollama:
+- **llama3.2:3b** (2GB) - Task classification
+- **llama3.1:8b** (5GB) - Context compression
+- **qwen2.5-coder:7b** (5GB) - Code editing
+- **nomic-embed-text** (274MB) - Semantic search
+
+Total: ~12GB one-time download, then FREE forever.
+
+## Architecture
+
+```
+User Request
+    ↓
+Classifier (local) → Complexity Scorer
+    ↓
+Router Decision
+    ↓
+┌──────────────┬──────────────┐
+│ Local Models │  Claude API  │
+│   (FREE)     │  (Complex)   │
+└──────────────┴──────────────┘
+    ↓
+Response + Metrics
+```
+
+## Examples
 
 ```bash
-# Install dependencies
-npm install
+# Format code (FREE)
+kochava "format this: function foo(){return 1}"
+→ Uses qwen2.5-coder:7b locally
 
-# Build TypeScript
-npm run build
+# Explain function (FREE)
+kochava "explain async/await"
+→ Uses llama3.1:8b locally
 
-# Development mode with hot reload
-npm run dev
+# Complex debugging (Claude)
+kochava "why is my React app re-rendering infinitely?"
+→ Escalates to Claude API
 
-# Run tests
-npm test
+# Auto-fallback (FREE)
+# If Claude API fails/credits exhausted, automatically uses local model
+kochava "complex task" # → Claude fails → Local model takes over
+```
+
+## Statistics Tracking
+
+```bash
+kochava --stats
+```
+
+Output:
+```
+📊 Usage Statistics
+
+Total Requests:    25
+Local (FREE):      19 (76.0%)
+Claude (Cloud):    6 (24.0%)
+Tokens Saved:      45,000
+Claude Tokens:     12,000
+
+Estimated Savings: $135.00
+Claude Cost:       $36.00
 ```
 
 ## Troubleshooting
 
-### Ollama not responding
+**Ollama not responding:**
 ```bash
-# Check if Ollama is running
+# Check status
 curl http://localhost:11434/api/version
 
-# Start Ollama
-open /Applications/Ollama.app  # macOS
+# Restart (macOS)
+brew services restart ollama
 ```
 
-### Models not found
+**Models missing:**
 ```bash
-# List installed models
+# List installed
 ollama list
 
-# Reinstall models
-bash scripts/install_models.sh
+# Re-download
+ollama pull llama3.2:3b
 ```
 
-### Claude API errors
-- Verify `ANTHROPIC_API_KEY` in `.env`
-- Check token budget in `.env` (`CLAUDE_TOKEN_BUDGET`)
-- Review logs in `logs/routing.log`
-
-### Build errors
+**Docker issues:**
 ```bash
-# Clean and rebuild
-rm -rf dist node_modules
-npm install
-npm run build
+# View logs
+docker-compose logs -f
+
+# Rebuild
+docker-compose build --no-cache
+```
+
+## Project Structure
+
+```
+kochava/
+├── setup.sh              # Unified installation (Docker or Local)
+├── docker-compose.yml    # Multi-service Docker setup
+├── src/
+│   ├── core/            # Routing logic
+│   ├── interfaces/      # CLI, server, plugin
+│   └── claude/          # Claude API client
+├── config/              # Routing & model configs
+└── scripts/             # Helper scripts
+```
+
+## Advanced
+
+### HTTP Server
+```bash
+npm run server
+# POST /api/process - Process query
+# GET /api/metrics - Usage stats
+# POST /api/reset - Reset session
+```
+
+### Claude Plugin
+```bash
+npm run plugin
+# Integrates with Claude Desktop
+# Exposes kochava as a tool
+```
+
+### Global Command
+```bash
+./scripts/install_command.sh
+# Then use: kochava "your question" anywhere
 ```
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | - | Claude API key (required) |
+| `ANTHROPIC_API_KEY` | none | Claude API key (optional) |
 | `CLAUDE_TOKEN_BUDGET` | 8000 | Max tokens per session |
-| `OLLAMA_HOST` | http://localhost:11434 | Ollama API endpoint |
-| `SERVER_PORT` | 3000 | HTTP server port |
-| `PLUGIN_PORT` | 3001 | Plugin server port |
-| `LOG_LEVEL` | info | Logging level |
-
-## Git Workflow
-
-The project includes `.gitignore` rules to keep the repository clean:
-- Models are managed by Ollama (not committed)
-- `.env` is not committed (use `.env.example`)
-- Build artifacts are not committed
-- Logs are not committed
-
-## License
-
-MIT
+| `OLLAMA_HOST` | localhost:11434 | Ollama endpoint |
+| `AUTO_FALLBACK_ENABLED` | true | Auto-fallback to local |
+| `LOG_LEVEL` | info | Logging verbosity |
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and verification
-5. Submit a pull request
+2. Create feature branch: `git checkout -b feature/my-feature`
+3. Commit changes: `git commit -am 'Add feature'`
+4. Push: `git push origin feature/my-feature`
+5. Create Pull Request
 
-## Support
+## License
 
-For issues and questions:
-- Check logs in `logs/` directory
-- Run verification: `bash scripts/verify.sh`
-- Review configuration in `config/`
-- Check Ollama status: `ollama list`
+MIT - See [LICENSE](LICENSE)
+
+## Links
+
+- **GitHub**: https://github.com/NaorHai/kochava
+- **Issues**: https://github.com/NaorHai/kochava/issues
+- **Docker Guide**: `README_DOCKER.md`
+- **Local Setup**: See `setup.sh` for details
