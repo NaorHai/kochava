@@ -39,45 +39,51 @@ export class SemanticToolRouter {
 
   /**
    * Pre-compute embeddings for all tools (run once at startup)
+   * OPTIMIZED: Batched parallel embedding for fast initialization
    */
   async initialize(toolCatalog: ToolCatalog): Promise<void> {
     const startTime = Date.now();
     this.toolEmbeddings = [];
 
-    // Embed all skills
-    for (const skill of toolCatalog.skills) {
-      const description = `${skill.name}: ${skill.description || 'No description'}`;
-      const embedding = await this.embedder.embed(description);
+    // Batch size to avoid overwhelming Ollama
+    const BATCH_SIZE = 10;
 
-      this.toolEmbeddings.push({
-        name: skill.name,
-        type: 'skill',
-        embedding,
-        description: skill.description || ''
+    // Combine all tools for batched processing
+    const allTools: Array<{item: any; type: 'skill' | 'mcp'}> = [
+      ...toolCatalog.skills.map(skill => ({ item: skill, type: 'skill' as const })),
+      ...toolCatalog.mcpTools.map(tool => ({ item: tool, type: 'mcp' as const }))
+    ];
+
+    // Process in batches
+    for (let i = 0; i < allTools.length; i += BATCH_SIZE) {
+      const batch = allTools.slice(i, i + BATCH_SIZE);
+
+      const batchPromises = batch.map(async ({ item, type }) => {
+        const description = `${item.name}: ${item.description || 'No description'}`;
+        const embedding = await this.embedder.embed(description);
+
+        return {
+          name: item.name,
+          type,
+          embedding,
+          description: item.description || ''
+        };
       });
-    }
 
-    // Embed all MCP tools
-    for (const tool of toolCatalog.mcpTools) {
-      const description = `${tool.name}: ${tool.description || 'No description'}`;
-      const embedding = await this.embedder.embed(description);
-
-      this.toolEmbeddings.push({
-        name: tool.name,
-        type: 'mcp',
-        embedding,
-        description: tool.description || ''
-      });
+      // Process batch in parallel
+      const batchResults = await Promise.all(batchPromises);
+      this.toolEmbeddings.push(...batchResults);
     }
 
     this.initialized = true;
     const elapsed = Date.now() - startTime;
 
-    logger.debug('Tool embeddings computed', {
+    logger.debug('Tool embeddings computed (batched parallel)', {
       totalTools: this.toolEmbeddings.length,
       skills: toolCatalog.skills.length,
       mcps: toolCatalog.mcpTools.length,
-      elapsed
+      elapsed,
+      batchSize: BATCH_SIZE
     });
   }
 

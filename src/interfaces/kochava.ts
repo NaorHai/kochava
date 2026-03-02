@@ -152,7 +152,7 @@ async function runInteractiveMode(forceModel?: string, sessionId?: string, profi
 
   // Load skills and orchestrator in parallel with progress indicator
   const startTime = Date.now();
-  process.stdout.write(chalk.gray('Loading...'));
+  process.stdout.write(chalk.gray('Loading') + chalk.cyan(' (discovering tools & computing embeddings)') + chalk.gray('...'));
 
   const [orchestrator, availableSkills] = await Promise.all([
     initOrchestrator(sessionId, profile),
@@ -162,7 +162,7 @@ async function runInteractiveMode(forceModel?: string, sessionId?: string, profi
   const currentSessionId = orchestrator.getSessionId();
   const toolCounts = await orchestrator.getToolCounts();
   const elapsed = Date.now() - startTime;
-  process.stdout.write('\r' + ' '.repeat(20) + '\r'); // Clear loading
+  process.stdout.write('\r' + ' '.repeat(80) + '\r'); // Clear loading
 
   const totalTools = toolCounts.skills + toolCounts.mcps;
   if (totalTools > 0) {
