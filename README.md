@@ -1,4 +1,9 @@
-# Kochava
+# Kochava v1.0.0
+
+[![CI](https://github.com/NaorHai/kochava/workflows/CI/badge.svg)](https://github.com/NaorHai/kochava/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](package.json)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 > **60-80% of coding tasks run FREE** on local models. Complex tasks escalate to Claude API automatically.
 
@@ -179,11 +184,58 @@ kochava/
 └── scripts/          # Helpers
 ```
 
+## Development
+
+### Requirements
+- Node.js >= 18.0.0
+- npm or yarn
+- Ollama (for local models)
+
+### Build from Source
+```bash
+git clone https://github.com/NaorHai/kochava.git
+cd kochava
+npm install
+npm run build
+npm test
+```
+
+### Run Tests
+```bash
+npm test              # Type checking + health checks
+npm run test:build    # TypeScript compilation check
+npm run test:health   # Project structure validation
+npm run lint          # Type linting
+```
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Quick Start for Contributors
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `npm test`
+5. Submit a pull request
+
+## Security
+
+Found a security issue? Please see [SECURITY.md](SECURITY.md) for responsible disclosure.
+
 ## Links
 
 - **GitHub**: https://github.com/NaorHai/kochava
 - **Issues**: https://github.com/NaorHai/kochava/issues
+- **Discussions**: https://github.com/NaorHai/kochava/discussions
+- **CI/CD**: https://github.com/NaorHai/kochava/actions
 
 ## License
 
-MIT
+MIT - See [LICENSE](LICENSE) for details
+
+## Acknowledgments
+
+- [Ollama](https://ollama.ai) - Local model infrastructure
+- [Anthropic](https://www.anthropic.com) - Claude API
+- Built with 💜 by the Kochava community

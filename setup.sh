@@ -34,6 +34,25 @@ echo -e "${PURPLE}🎉 FREE Local AI Models • 60-80% Tasks Run Locally${NC}\n"
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_ROOT"
 
+# Check Node.js version
+REQUIRED_NODE_VERSION=18
+if command -v node &> /dev/null; then
+  NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+  if [ "$NODE_VERSION" -lt "$REQUIRED_NODE_VERSION" ]; then
+    echo -e "${YELLOW}⚠️  Node.js version $REQUIRED_NODE_VERSION or higher is required${NC}"
+    echo -e "   Current version: $(node -v)"
+    echo -e "   Please upgrade Node.js: https://nodejs.org"
+    exit 1
+  fi
+  echo -e "${GREEN}✓ Node.js version: $(node -v)${NC}"
+else
+  echo -e "${YELLOW}⚠️  Node.js not found${NC}"
+  echo -e "   Please install Node.js $REQUIRED_NODE_VERSION or higher"
+  echo -e "   Download from: https://nodejs.org"
+  exit 1
+fi
+echo ""
+
 # Ask user for installation type
 echo -e "${CYAN}Choose installation method:${NC}"
 echo -e "  ${GREEN}1${NC}) 🐳 Docker (Recommended - Zero dependencies)"
@@ -81,6 +100,17 @@ if [ "$INSTALL_TYPE" = "docker" ]; then
   if [ ! -f .env ]; then
     echo -e "${CYAN}📝 Creating .env file...${NC}"
     cp .env.example .env
+
+    # Try to extract Claude API key from Claude Code settings
+    if command -v jq &> /dev/null && [ -f "$HOME/.claude/settings.json" ]; then
+      API_KEY=$(jq -r '.env.ANTHROPIC_AUTH_TOKEN // empty' "$HOME/.claude/settings.json" 2>/dev/null)
+      if [ -n "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
+        echo -e "${GREEN}✓ Found Claude API key in settings${NC}"
+        sed -i.bak "s/ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=$API_KEY/" .env
+        rm .env.bak 2>/dev/null || true
+      fi
+    fi
+
     echo -e "${GREEN}✓ .env created${NC}"
     echo ""
   fi
@@ -149,15 +179,19 @@ else
     if [[ "$OSTYPE" == "darwin"* ]]; then
       if command -v brew &> /dev/null; then
         brew install ollama
+        echo -e "${GREEN}✓ Ollama installed via Homebrew${NC}"
       else
-        echo -e "${YELLOW}Homebrew not found. Please install from: https://ollama.ai${NC}"
-        exit 1
+        echo -e "${YELLOW}Homebrew not found. Installing via curl...${NC}"
+        curl -fsSL https://ollama.com/install.sh | sh
+        echo -e "${GREEN}✓ Ollama installed${NC}"
       fi
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+      curl -fsSL https://ollama.com/install.sh | sh
+      echo -e "${GREEN}✓ Ollama installed${NC}"
     else
       echo -e "${YELLOW}Please install Ollama manually from: https://ollama.ai${NC}"
       exit 1
     fi
-    echo -e "${GREEN}✓ Ollama installed${NC}"
     echo ""
   else
     echo -e "${GREEN}✓ Ollama already installed${NC}"
@@ -178,16 +212,43 @@ else
   # Setup environment
   echo -e "${CYAN}📝 Setting up environment...${NC}"
 
+  # Create .env if doesn't exist
   if [ ! -f .env ]; then
     cp .env.example .env
     echo -e "${GREEN}✓ .env created${NC}"
+
+    # Try to extract Claude API key from Claude Code settings
+    if command -v jq &> /dev/null && [ -f "$HOME/.claude/settings.json" ]; then
+      API_KEY=$(jq -r '.env.ANTHROPIC_AUTH_TOKEN // empty' "$HOME/.claude/settings.json" 2>/dev/null)
+      if [ -n "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
+        echo -e "${GREEN}✓ Found Claude API key in settings${NC}"
+        sed -i.bak "s/ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=$API_KEY/" .env
+        rm .env.bak 2>/dev/null || true
+        echo -e "${GREEN}✓ API key configured automatically${NC}"
+      fi
+    fi
   else
     echo -e "${GREEN}✓ .env exists${NC}"
   fi
 
-  npm install
-  npm run build
-  echo -e "${GREEN}✓ Environment ready${NC}"
+  # Install dependencies
+  if [ ! -d "node_modules" ]; then
+    echo -e "${CYAN}📦 Installing dependencies...${NC}"
+    npm install
+    echo -e "${GREEN}✓ Dependencies installed${NC}"
+  else
+    echo -e "${GREEN}✓ Dependencies already installed${NC}"
+  fi
+
+  # Build project
+  if [ ! -d "dist" ]; then
+    echo -e "${CYAN}🏗️  Building project...${NC}"
+    npm run build
+    echo -e "${GREEN}✓ Project built${NC}"
+  else
+    echo -e "${GREEN}✓ Project already built${NC}"
+  fi
+
   echo ""
 
   # Download models
@@ -197,9 +258,14 @@ else
   MODELS=("llama3.2:3b" "llama3.1:8b" "qwen2.5-coder:7b" "nomic-embed-text")
 
   for model in "${MODELS[@]}"; do
-    echo -e "${PURPLE}Pulling $model...${NC}"
-    ollama pull "$model"
-    echo -e "${GREEN}✓ $model downloaded${NC}"
+    # Check if model already exists
+    if ollama list | grep -q "$model"; then
+      echo -e "${GREEN}✓ $model already downloaded${NC}"
+    else
+      echo -e "${PURPLE}Pulling $model...${NC}"
+      ollama pull "$model"
+      echo -e "${GREEN}✓ $model downloaded${NC}"
+    fi
     echo ""
   done
 
@@ -213,15 +279,21 @@ else
   echo -e "${PINK}╚════════════════════════════════════════════════════════════╝${NC}"
   echo ""
 
-  echo -e "${CYAN}Install Global Command (Recommended):${NC}"
-  echo -e "  ${GREEN}./scripts/install_command.sh${NC}"
+  # Install global command automatically
+  echo -e "${CYAN}Installing global kochava command...${NC}"
+  ./scripts/install_command.sh
   echo ""
 
-  echo -e "${CYAN}Quick Start:${NC}"
-  echo -e "  ${GREEN}npm run kochava -- \"format this: function foo(){return 1}\"${NC}"
-  echo -e "  ${GREEN}npm run kochava -- --chat${NC}         # Interactive mode"
-  echo -e "  ${GREEN}npm run kochava -- --stats${NC}        # Show statistics"
+  echo -e "${CYAN}Quick Start (after restarting terminal):${NC}"
+  echo -e "  ${GREEN}kochava \"format this: function foo(){return 1}\"${NC}"
+  echo -e "  ${GREEN}kochava --chat${NC}         # Interactive mode"
+  echo -e "  ${GREEN}kochava --stats${NC}        # Show statistics"
   echo ""
+
+  echo -e "${CYAN}Or use npm (works now):${NC}"
+  echo -e "  ${GREEN}npm run kochava -- \"your question\"${NC}"
+  echo ""
+
   echo -e "${CYAN}Documentation:${NC} README.md"
 fi
 

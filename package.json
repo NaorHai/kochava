@@ -1,9 +1,12 @@
 {
-  "name": "ai-router",
+  "name": "kochava",
   "version": "1.0.0",
-  "description": "Autonomous multi-model routing system with local SLMs and Claude API integration",
+  "description": "Intelligent AI router that runs 60-80% of coding tasks FREE on local models, escalates complex tasks to Claude API",
   "main": "dist/index.js",
   "type": "module",
+  "bin": {
+    "kochava": "./dist/interfaces/kochava.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/interfaces/cli.ts",
@@ -11,11 +14,37 @@
     "kochava": "node dist/interfaces/kochava.js",
     "server": "node dist/interfaces/server.js",
     "plugin": "node dist/interfaces/plugin_adapter.js",
-    "test": "npm run build && node dist/scripts/verify.js",
-    "verify": "npm run test",
+    "test": "npm run test:build && npm run test:health",
+    "test:build": "tsc --noEmit",
+    "test:health": "node test/health.test.js",
+    "test:integration": "npm run build && node dist/scripts/verify.js",
+    "verify": "npm run test:integration",
+    "lint": "tsc --noEmit",
     "install-command": "bash scripts/install_command.sh",
-    "uninstall-command": "bash scripts/uninstall_command.sh"
+    "uninstall-command": "bash scripts/uninstall_command.sh",
+    "prepublishOnly": "npm run build"
   },
+  "keywords": [
+    "ai",
+    "llm",
+    "local-models",
+    "claude",
+    "ollama",
+    "code-assistant",
+    "routing",
+    "free",
+    "cost-optimization"
+  ],
+  "author": "Naor Haimov",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NaorHai/kochava.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NaorHai/kochava/issues"
+  },
+  "homepage": "https://github.com/NaorHai/kochava#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
     "dotenv": "^16.4.5",

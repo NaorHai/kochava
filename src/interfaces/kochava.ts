@@ -36,7 +36,7 @@ const KOCHAVA_ART = `
 program
   .name('kochava')
   .description('Intelligent AI routing with local models and Claude')
-  .version('1.0.0')
+  .version('1.0.0', '-v, --version', 'Output the current version')
   .usage('[options] [query]');
 
 program
@@ -67,6 +67,8 @@ program
 
       const query = queryParts.join(' ');
       if (!query) {
+        // Show banner before help
+        console.log(chalk.magenta(KOCHAVA_ART));
         program.help();
         return;
       }
