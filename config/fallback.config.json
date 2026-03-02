@@ -1,0 +1,49 @@
+{
+  "fallbackBehavior": {
+    "enabled": true,
+    "description": "Automatically fall back to local models when Claude API fails",
+    "showNotifications": true,
+    "logFallbacks": true
+  },
+  "errorHandling": {
+    "credits_exhausted": {
+      "fallbackToLocal": true,
+      "notifyUser": true,
+      "message": "Claude credits exhausted - using FREE local model"
+    },
+    "rate_limit": {
+      "fallbackToLocal": true,
+      "notifyUser": true,
+      "message": "Rate limit reached - using FREE local model"
+    },
+    "budget_exceeded": {
+      "fallbackToLocal": true,
+      "notifyUser": true,
+      "message": "Session budget reached - using FREE local model"
+    },
+    "invalid_api_key": {
+      "fallbackToLocal": true,
+      "notifyUser": true,
+      "message": "API key not configured - using FREE local model only"
+    },
+    "network_error": {
+      "fallbackToLocal": true,
+      "notifyUser": true,
+      "message": "Network error - using FREE local model"
+    }
+  },
+  "notifications": {
+    "style": "banner",
+    "includeInResponse": true,
+    "logToFile": true
+  },
+  "fallbackTargets": {
+    "trivial_edit": "local_code",
+    "formatting": "local_code",
+    "explanation": "local_compress",
+    "refactor_small": "local_code",
+    "deep_debug": "local_code",
+    "architecture": "local_compress",
+    "multi_file_reasoning": "local_code"
+  }
+}

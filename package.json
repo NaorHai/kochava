@@ -1,0 +1,37 @@
+{
+  "name": "ai-router",
+  "version": "1.0.0",
+  "description": "Autonomous multi-model routing system with local SLMs and Claude API integration",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/interfaces/cli.ts",
+    "start": "node dist/interfaces/cli.js",
+    "kochava": "node dist/interfaces/kochava.js",
+    "server": "node dist/interfaces/server.js",
+    "plugin": "node dist/interfaces/plugin_adapter.js",
+    "test": "npm run build && node dist/scripts/verify.js",
+    "verify": "npm run test",
+    "install-command": "bash scripts/install_command.sh",
+    "uninstall-command": "bash scripts/uninstall_command.sh"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "ollama": "^0.5.0",
+    "winston": "^3.11.0",
+    "commander": "^11.1.0",
+    "chalk": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/express": "^4.17.21",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

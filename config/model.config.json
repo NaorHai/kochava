@@ -1,0 +1,33 @@
+{
+  "models": {
+    "classifier": {
+      "name": "llama3.2:3b",
+      "purpose": "Intent classification and task categorization",
+      "maxTokens": 512,
+      "temperature": 0.1
+    },
+    "compressor": {
+      "name": "llama3.1:8b",
+      "purpose": "Context compression and summarization",
+      "maxTokens": 2048,
+      "temperature": 0.3
+    },
+    "codeEditor": {
+      "name": "qwen2.5-coder:7b",
+      "purpose": "Code editing and formatting",
+      "maxTokens": 4096,
+      "temperature": 0.2
+    },
+    "embedding": {
+      "name": "nomic-embed-text",
+      "purpose": "Code and text embeddings for retrieval",
+      "dimensions": 768
+    }
+  },
+  "downloadOrder": [
+    "llama3.2:3b",
+    "llama3.1:8b",
+    "qwen2.5-coder:7b",
+    "nomic-embed-text"
+  ]
+}

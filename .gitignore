@@ -1,0 +1,34 @@
+# Environment
+.env
+.env.local
+
+# Node
+node_modules/
+dist/
+*.log
+
+# Models (managed by Ollama)
+models/*
+!models/.gitkeep
+
+# Embeddings
+embeddings/*
+!embeddings/.gitkeep
+
+# Logs
+logs/*
+!logs/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build
+*.tsbuildinfo

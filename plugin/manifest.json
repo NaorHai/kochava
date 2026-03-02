@@ -1,0 +1,18 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "AI Router",
+  "name_for_model": "ai_router",
+  "description_for_human": "Intelligently routes AI coding requests between local models and Claude API for optimal performance and cost",
+  "description_for_model": "Routes coding requests to local SLMs for simple tasks (formatting, trivial edits, explanations) or escalates to Claude for complex reasoning. Minimizes Claude token usage while maintaining quality.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "http://localhost:3001/openapi.yaml",
+    "is_user_authenticated": false
+  },
+  "logo_url": "http://localhost:3001/logo.png",
+  "contact_email": "support@example.com",
+  "legal_info_url": "http://localhost:3001/legal"
+}

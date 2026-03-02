@@ -1,0 +1,82 @@
+openapi: 3.0.0
+info:
+  title: AI Router Plugin API
+  description: Routes AI coding requests between local SLMs and Claude API based on complexity
+  version: 1.0.0
+servers:
+  - url: http://localhost:3001
+    description: Local plugin server
+
+paths:
+  /route:
+    post:
+      operationId: routeAiRequest
+      summary: Route an AI coding request
+      description: Analyzes the request complexity and routes to the optimal model (local or Claude)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  description: The coding request or question
+                  example: "Explain how this function works"
+                code_context:
+                  type: string
+                  description: Optional code context for the request
+                  example: "function add(a, b) { return a + b; }"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+                    description: The generated response
+                  model_used:
+                    type: string
+                    description: Which model handled the request
+                  tokens_used:
+                    type: integer
+                    description: Number of tokens consumed
+                  latency_ms:
+                    type: integer
+                    description: Processing time in milliseconds
+                  metrics:
+                    type: object
+                    description: Usage metrics
+                    properties:
+                      totalRequests:
+                        type: integer
+                      localRequests:
+                        type: integer
+                      claudeRequests:
+                        type: integer
+                      tokensSaved:
+                        type: integer
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string

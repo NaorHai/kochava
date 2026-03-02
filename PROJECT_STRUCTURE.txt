@@ -1,0 +1,134 @@
+ai-router/
+│
+├── config/
+│   ├── model.config.json           # Model definitions for Ollama
+│   └── routing.config.json         # Routing rules and thresholds
+│
+├── src/
+│   ├── core/                       # Framework-agnostic routing logic
+│   │   ├── classifier.ts           # Task classification with local SLM
+│   │   ├── complexity.ts           # Complexity scoring algorithm
+│   │   ├── router.ts               # Main routing decision engine
+│   │   ├── context_optimizer.ts    # Token optimization
+│   │   ├── escalation.ts           # Escalation management
+│   │   ├── local-executor.ts       # Local model execution
+│   │   ├── memory-manager.ts       # Conversation history
+│   │   └── orchestrator.ts         # Main coordinator
+│   │
+│   ├── claude/
+│   │   ├── client.ts               # Claude API client
+│   │   └── supervisor.ts           # Override mechanism
+│   │
+│   ├── retrieval/
+│   │   ├── embedder.ts             # Embedding generation
+│   │   └── indexer.ts              # Code indexing and search
+│   │
+│   ├── interfaces/
+│   │   ├── cli.ts                  # Interactive CLI
+│   │   ├── server.ts               # HTTP REST API
+│   │   └── plugin_adapter.ts       # Claude plugin interface
+│   │
+│   ├── types/
+│   │   └── index.ts                # TypeScript type definitions
+│   │
+│   ├── utils/
+│   │   ├── logger.ts               # Winston logging setup
+│   │   └── token-counter.ts        # Token estimation
+│   │
+│   ├── scripts/
+│   │   └── verify.ts               # TypeScript verification tests
+│   │
+│   └── index.ts                    # Main exports
+│
+├── scripts/
+│   ├── bootstrap.sh                # One-command installation
+│   ├── setup_env.sh                # Environment setup
+│   ├── install_models.sh           # Download Ollama models
+│   └── verify.sh                   # System verification
+│
+├── plugin/
+│   ├── manifest.json               # Claude plugin manifest
+│   ├── openapi.yaml                # OpenAPI specification
+│   └── README_plugin.md            # Plugin documentation
+│
+├── logs/                           # Runtime logs (gitignored)
+│   ├── .gitkeep
+│   ├── routing.log                 # Routing decisions
+│   ├── token_usage.log             # Token consumption
+│   └── escalation.log              # Escalation events
+│
+├── models/                         # Managed by Ollama (gitignored)
+│   └── .gitkeep
+│
+├── embeddings/                     # Code embeddings (gitignored)
+│   └── .gitkeep
+│
+├── dist/                           # Compiled JavaScript (gitignored)
+│   └── [compiled files]
+│
+├── node_modules/                   # Dependencies (gitignored)
+│
+├── .env                            # Environment variables (gitignored)
+├── .env.example                    # Environment template
+├── .gitignore                      # Git exclusions
+│
+├── package.json                    # NPM configuration
+├── tsconfig.json                   # TypeScript configuration
+├── run.sh                          # CLI launcher
+│
+├── README.md                       # Main documentation
+├── ARCHITECTURE.md                 # Architecture details
+├── QUICKSTART.md                   # 5-minute setup guide
+└── PROJECT_STRUCTURE.txt           # This file
+
+═══════════════════════════════════════════════════════════
+
+Key Files by Purpose:
+
+ENTRY POINTS:
+  - run.sh                          # Interactive CLI
+  - dist/interfaces/server.js       # HTTP server
+  - dist/interfaces/plugin_adapter.js # Claude plugin
+
+CONFIGURATION:
+  - .env                            # API keys, settings
+  - config/routing.config.json      # Routing rules
+  - config/model.config.json        # Model definitions
+
+INSTALLATION:
+  - scripts/bootstrap.sh            # One-command setup
+  - scripts/verify.sh               # System check
+
+CORE LOGIC:
+  - src/core/orchestrator.ts        # Main coordinator
+  - src/core/router.ts              # Routing engine
+  - src/core/classifier.ts          # Task classification
+
+DOCUMENTATION:
+  - README.md                       # Full documentation
+  - QUICKSTART.md                   # Quick setup
+  - ARCHITECTURE.md                 # Technical details
+  - plugin/README_plugin.md         # Plugin guide
+
+═══════════════════════════════════════════════════════════
+
+Total Files: 34 source files
+Total Lines: ~3,500 lines of code
+
+Models Used:
+  - llama3.2:3b          (Classifier)
+  - llama3.1:8b          (Compression)
+  - qwen2.5-coder:7b     (Code editing)
+  - nomic-embed-text     (Embeddings)
+
+Interfaces:
+  ✓ CLI (interactive)
+  ✓ CLI (single query)
+  ✓ HTTP REST API
+  ✓ Claude Plugin
+
+Performance Targets:
+  - 60-80% local request ratio
+  - 70%+ token savings
+  - <3s local latency
+  - <10s Claude latency

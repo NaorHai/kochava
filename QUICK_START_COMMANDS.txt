@@ -1,0 +1,247 @@
+╔═══════════════════════════════════════════════════════════╗
+║           AI ROUTER - QUICK START COMMANDS                ║
+╚═══════════════════════════════════════════════════════════╝
+
+Copy/paste these commands to get started quickly!
+
+═══════════════════════════════════════════════════════════
+
+📦 INSTALLATION (First Time Only)
+═══════════════════════════════════════════════════════════
+
+cd ~/Documents/Private/ai-router
+./scripts/bootstrap.sh
+
+⏱️  Takes: 15-20 minutes (one-time)
+💾 Downloads: ~12GB models (FREE)
+🔑 API Key: Optional (press Enter to skip)
+
+═══════════════════════════════════════════════════════════
+
+🚀 BASIC USAGE (Interactive Mode)
+═══════════════════════════════════════════════════════════
+
+# Start interactive CLI
+cd ~/Documents/Private/ai-router
+./run.sh
+
+# Now type your questions:
+> Format this: function foo(){return 1}
+> Explain how async/await works
+> /stats
+> /quit
+
+═══════════════════════════════════════════════════════════
+
+🌐 SERVER MODE
+═══════════════════════════════════════════════════════════
+
+# Start HTTP server
+cd ~/Documents/Private/ai-router
+npm run server
+
+# Test from another terminal:
+curl -X POST http://localhost:3000/api/process \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Format this: function foo(){return 1}"}'
+
+# Get stats:
+curl http://localhost:3000/api/metrics
+
+═══════════════════════════════════════════════════════════
+
+🔌 CLAUDE PLUGIN MODE
+═══════════════════════════════════════════════════════════
+
+# Start plugin server
+cd ~/Documents/Private/ai-router
+npm run plugin
+
+# Configure Claude Desktop:
+# macOS: ~/Library/Application Support/Claude/claude_desktop_config.json
+# Add:
+{
+  "plugins": [
+    {"url": "http://localhost:3001", "enabled": true}
+  ]
+}
+
+# Restart Claude Desktop
+
+═══════════════════════════════════════════════════════════
+
+📊 MONITORING COMMANDS
+═══════════════════════════════════════════════════════════
+
+# Check stats (in CLI)
+./run.sh
+> /stats
+
+# View routing log
+tail -f logs/routing.log
+
+# View token usage
+tail -f logs/token_usage.log
+
+# Check what models are installed
+ollama list
+
+# Check Ollama is running
+curl http://localhost:11434/api/version
+
+═══════════════════════════════════════════════════════════
+
+🛠️ TROUBLESHOOTING COMMANDS
+═══════════════════════════════════════════════════════════
+
+# Verify installation
+bash scripts/verify.sh
+
+# Reinstall models
+bash scripts/install_models.sh
+
+# Rebuild project
+rm -rf dist node_modules
+npm install
+npm run build
+
+# Start Ollama (macOS)
+open /Applications/Ollama.app
+
+# Check Ollama status
+ps aux | grep ollama
+
+═══════════════════════════════════════════════════════════
+
+🎯 EXAMPLE REQUESTS (Try These!)
+═══════════════════════════════════════════════════════════
+
+./run.sh
+
+# Formatting (LOCAL - FREE)
+> Format this code: function foo(){return 1}
+
+# Explanation (LOCAL - FREE)
+> Explain how closures work in JavaScript
+
+# Refactoring (LOCAL - FREE)
+> Refactor this to use arrow functions: function add(a,b){return a+b}
+
+# Debugging (CLAUDE or LOCAL)
+> Why does this React component cause infinite renders?
+
+# Architecture (CLAUDE or LOCAL)
+> Design a scalable microservices architecture for e-commerce
+
+═══════════════════════════════════════════════════════════
+
+⚙️ CONFIGURATION COMMANDS
+═══════════════════════════════════════════════════════════
+
+# Edit API key
+nano .env
+# Change: ANTHROPIC_API_KEY=your-key-here
+
+# Edit token budget
+nano .env
+# Change: CLAUDE_TOKEN_BUDGET=8000
+
+# Disable Claude (100% local)
+nano .env
+# Change: ANTHROPIC_API_KEY=none
+
+# Edit routing rules
+nano config/routing.config.json
+
+# Edit model selection
+nano config/model.config.json
+
+═══════════════════════════════════════════════════════════
+
+📁 FILE LOCATIONS
+═══════════════════════════════════════════════════════════
+
+Project:     ~/Documents/Private/ai-router
+Logs:        ~/Documents/Private/ai-router/logs/
+Config:      ~/Documents/Private/ai-router/config/
+Models:      ~/.ollama/models/ (managed by Ollama)
+Env:         ~/Documents/Private/ai-router/.env
+
+═══════════════════════════════════════════════════════════
+
+🔄 DAILY WORKFLOW
+═══════════════════════════════════════════════════════════
+
+# Morning: Start session
+cd ~/Documents/Private/ai-router
+./run.sh
+
+# Work: Ask questions
+> [your coding questions]
+
+# Check: View stats
+> /stats
+
+# Evening: Exit
+> /quit
+
+═══════════════════════════════════════════════════════════
+
+💰 COST TRACKING
+═══════════════════════════════════════════════════════════
+
+# Real-time stats
+./run.sh
+> /stats
+
+# Check token usage log
+cat logs/token_usage.log | jq '.claudeTokensUsed' | tail -10
+
+# Estimate monthly cost
+# ~$10-30/month with 60-80% local routing
+# $0/month if using only local models
+
+═══════════════════════════════════════════════════════════
+
+📚 DOCUMENTATION
+═══════════════════════════════════════════════════════════
+
+less README.md                  # Full documentation
+less QUICKSTART.md              # 5-minute guide
+less HOW_TO_USE.md              # This guide in detail
+less LOCAL_MODELS.md            # FREE models explained
+less FALLBACK_BEHAVIOR.md       # Fallback guide
+less ARCHITECTURE.md            # Technical details
+
+═══════════════════════════════════════════════════════════
+
+🆘 HELP
+═══════════════════════════════════════════════════════════
+
+# Built-in help
+./run.sh
+> /help
+
+# Verify system
+bash scripts/verify.sh
+
+# Check logs
+tail -f logs/routing.log
+
+# GitHub issues
+https://github.com/your-repo/issues
+
+═══════════════════════════════════════════════════════════
+
+✨ MOST COMMON WORKFLOW
+═══════════════════════════════════════════════════════════
+
+cd ~/Documents/Private/ai-router
+./run.sh
+
+> Format this: function foo(){return 1}
+> Explain this code: [paste code]
+> /stats
+> /quit
+
+═══════════════════════════════════════════════════════════

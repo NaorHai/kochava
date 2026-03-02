@@ -1,0 +1,66 @@
+{
+  "taskTypes": {
+    "trivial_edit": {
+      "description": "Simple code edits, variable renames, single-line changes",
+      "route": "local_code",
+      "maxComplexity": 2,
+      "keywords": ["rename", "change variable", "fix typo", "update string"]
+    },
+    "formatting": {
+      "description": "Code formatting, style fixes, indentation",
+      "route": "local_code",
+      "maxComplexity": 1,
+      "keywords": ["format", "indent", "style", "prettier", "lint"]
+    },
+    "explanation": {
+      "description": "Explain code, provide documentation",
+      "route": "local_compress",
+      "maxComplexity": 5,
+      "keywords": ["explain", "what does", "how does", "document", "describe"]
+    },
+    "refactor_small": {
+      "description": "Small refactoring within a single function or file",
+      "route": "local_code",
+      "maxComplexity": 4,
+      "keywords": ["refactor", "simplify", "extract method", "rename"]
+    },
+    "deep_debug": {
+      "description": "Complex debugging requiring deep reasoning",
+      "route": "claude",
+      "maxComplexity": 8,
+      "keywords": ["debug", "why is", "error", "exception", "crash", "not working"]
+    },
+    "architecture": {
+      "description": "Architectural decisions, design patterns, system design",
+      "route": "claude",
+      "maxComplexity": 9,
+      "keywords": ["architecture", "design", "pattern", "structure", "organize"]
+    },
+    "multi_file_reasoning": {
+      "description": "Tasks requiring understanding of multiple files",
+      "route": "claude",
+      "maxComplexity": 7,
+      "keywords": ["across files", "multiple files", "entire codebase", "system-wide"]
+    }
+  },
+  "complexityThresholds": {
+    "local": 4,
+    "claude": 5
+  },
+  "contextOptimization": {
+    "stripComments": true,
+    "removeBlankLines": true,
+    "deduplicateImports": true,
+    "maxContextTokens": 6000
+  },
+  "memoryManagement": {
+    "maxTurnsBeforeSummary": 5,
+    "maxHistoryTokens": 4000,
+    "enableRollingSummary": true
+  },
+  "escalation": {
+    "enabled": true,
+    "allowClaudeOverride": true,
+    "confidenceThreshold": 0.7
+  }
+}
