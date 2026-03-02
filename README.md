@@ -1,4 +1,4 @@
-# Kochava v1.0.0
+# Kochava v1.0.1
 
 [![CI](https://github.com/NaorHai/kochava/workflows/CI/badge.svg)](https://github.com/NaorHai/kochava/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)

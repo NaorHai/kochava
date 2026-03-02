@@ -22,6 +22,7 @@ export class InteractiveMenu {
   private pageSize: number;
   private colorTheme: MenuOptions['colorTheme'];
   private isActive: boolean = false;
+  private lastRenderedLines: number = 0;
 
   constructor(options: MenuOptions) {
     this.items = options.items;
@@ -142,23 +143,32 @@ export class InteractiveMenu {
   private render(): void {
     const stdout = process.stdout;
 
-    // Clear previous render
-    if (this.isActive) {
-      // Move cursor up and clear
-      stdout.write('\x1b[?25l'); // Hide cursor
+    // Clear previous render by moving cursor up and clearing lines
+    if (this.lastRenderedLines > 0) {
+      for (let i = 0; i < this.lastRenderedLines; i++) {
+        stdout.write('\x1b[1A'); // Move cursor up one line
+        stdout.write('\x1b[2K'); // Clear entire line
+      }
     }
 
-    let output = '\n';
+    // Hide cursor
+    stdout.write('\x1b[?25l');
+
+    let output = '';
+    let lineCount = 0;
 
     // Header
-    output += chalk.magenta.bold('Select a skill or command:\n');
+    output += chalk.magenta.bold('Select a skill or command:') + '\n';
+    lineCount++;
 
     // Filter indicator
     if (this.filterText) {
       output += chalk.gray('Filter: ') + this.colorTheme!.filter(this.filterText) + '\n';
+      lineCount++;
     }
 
     output += chalk.gray('─'.repeat(60)) + '\n';
+    lineCount++;
 
     // Items
     const visibleItems = this.filteredItems.slice(
@@ -166,26 +176,37 @@ export class InteractiveMenu {
       this.scrollOffset + this.pageSize
     );
 
-    visibleItems.forEach((item, index) => {
-      const actualIndex = this.scrollOffset + index;
-      const isSelected = actualIndex === this.selectedIndex;
+    if (visibleItems.length === 0) {
+      output += chalk.yellow('  No matches found\n');
+      lineCount++;
+    } else {
+      visibleItems.forEach((item, index) => {
+        const actualIndex = this.scrollOffset + index;
+        const isSelected = actualIndex === this.selectedIndex;
 
-      if (isSelected) {
-        output += chalk.magenta('❯ ') + this.colorTheme!.selected(item) + '\n';
-      } else {
-        output += '  ' + this.colorTheme!.normal(item) + '\n';
-      }
-    });
+        if (isSelected) {
+          output += chalk.magenta('❯ ') + this.colorTheme!.selected(item) + '\n';
+        } else {
+          output += '  ' + this.colorTheme!.normal(item) + '\n';
+        }
+        lineCount++;
+      });
+    }
 
     // Footer
     output += chalk.gray('─'.repeat(60)) + '\n';
+    lineCount++;
 
     const showing = Math.min(this.pageSize, this.filteredItems.length);
     const total = this.filteredItems.length;
     output += chalk.gray(`Showing ${showing} of ${total} • ↑↓ Navigate • Enter Select • Esc Cancel\n`);
+    lineCount++;
 
     // Write output
     stdout.write(output);
+
+    // Save line count for next render
+    this.lastRenderedLines = lineCount;
   }
 
   private cleanup(stdin: NodeJS.ReadStream, handler: any): void {
@@ -196,14 +217,16 @@ export class InteractiveMenu {
       stdin.setRawMode(false);
     }
 
+    // Clear menu
+    if (this.lastRenderedLines > 0) {
+      for (let i = 0; i < this.lastRenderedLines; i++) {
+        process.stdout.write('\x1b[1A'); // Move up
+        process.stdout.write('\x1b[2K'); // Clear line
+      }
+    }
+
     // Show cursor
     process.stdout.write('\x1b[?25h');
-
-    // Clear menu
-    const linesToClear = this.pageSize + 6; // header + items + footer
-    for (let i = 0; i < linesToClear; i++) {
-      process.stdout.write('\x1b[1A\x1b[2K'); // Move up and clear line
-    }
   }
 }
 

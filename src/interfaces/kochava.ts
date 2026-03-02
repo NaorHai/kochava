@@ -42,7 +42,7 @@ const KOCHAVA_ART = `
 program
   .name('kochava')
   .description('Intelligent AI routing with local models and Claude')
-  .version('1.0.0', '-v, --version', 'Output the current version')
+  .version('1.0.1', '-v, --version', 'Output the current version')
   .usage('[options] [query]');
 
 program
@@ -189,6 +189,7 @@ async function runInteractiveMode(forceModel?: string) {
   });
 
   // Override _ttyWrite to detect "/" and show interactive menu
+  let menuActive = false; // Prevent multiple menus
   const originalTtyWrite = (rl as any)._ttyWrite;
   (rl as any)._ttyWrite = async function(s: string, key: any) {
     // Call original first
@@ -196,7 +197,8 @@ async function runInteractiveMode(forceModel?: string) {
 
     // Check if current line is exactly "/"
     const currentLine = (this as any).line || '';
-    if (currentLine === '/' && s === '/') {
+    if (currentLine === '/' && s === '/' && !menuActive) {
+      menuActive = true;
       // User just typed "/", show interactive menu
       setTimeout(async () => {
         // Clear the "/" from the line
@@ -206,19 +208,31 @@ async function runInteractiveMode(forceModel?: string) {
 
         // Show interactive menu
         const selected = await showSkillMenu(allCommands);
+        menuActive = false;
 
         if (selected) {
-          // User selected something, insert it
-          (this as any).line = selected;
-          (this as any).cursor = selected.length;
-          (this as any)._refreshLine();
+          // User selected something
+          (this as any).line = '';
+          (this as any).cursor = 0;
 
           // Auto-submit if it's a complete command
           if (selected.startsWith('/')) {
+            // Check if it's a built-in command (no execution indicator needed)
+            const builtinCommands = ['/help', '/stats', '/skills', '/skill-stats', '/reset', '/exit', '/quit', '/', '/?'];
+            const isBuiltin = builtinCommands.includes(selected);
+
+            if (!isBuiltin) {
+              // Show that we're executing the skill
+              console.log(chalk.magenta(`\n→ ${selected}...\n`));
+            }
+
+            // Emit the line event - the async handler will process it and call prompt() when done
             (this as any).emit('line', selected);
-            (this as any).line = '';
-            (this as any).cursor = 0;
-            (this as any).prompt();
+          } else {
+            // Not a command, just insert it
+            (this as any).line = selected;
+            (this as any).cursor = selected.length;
+            (this as any)._refreshLine();
           }
         } else {
           // User cancelled, restore prompt
@@ -251,7 +265,7 @@ async function runInteractiveMode(forceModel?: string) {
       return;
     }
 
-    // Handle commands without thinking indicator
+    // Handle built-in commands without thinking indicator
     if (input === '/exit' || input === 'exit' || input === '/quit' || input === 'quit') {
       console.log(chalk.magenta('\nGoodbye! 👋\n'));
       rl.close();
