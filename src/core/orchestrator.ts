@@ -150,7 +150,8 @@ export class AIOrchestrator {
         response = await this.handleClaudeFailure(error, decision, input, codeContext, context);
       }
     } else {
-      response = await this.executeLocally(decision.target, input, codeContext);
+      const formattedHistory = this.formatHistoryForLocal(context.history);
+      response = await this.executeLocally(decision.target, input, codeContext, formattedHistory);
       this.metrics.localRequests++;
 
       const estimatedClaudeTokens = Math.ceil(response.tokens * 1.5);
@@ -196,7 +197,8 @@ export class AIOrchestrator {
       : 'local_code';
 
     try {
-      const localResponse = await this.executeLocally(fallbackTarget, input, codeContext);
+      const formattedHistory = this.formatHistoryForLocal(context.history);
+      const localResponse = await this.executeLocally(fallbackTarget, input, codeContext, formattedHistory);
 
       this.metrics.localRequests++;
       const estimatedClaudeTokens = Math.ceil(localResponse.tokens * 1.5);
@@ -290,7 +292,8 @@ export class AIOrchestrator {
   private async executeLocally(
     target: 'local_code' | 'local_compress',
     prompt: string,
-    context?: string
+    context?: string,
+    history?: string
   ): Promise<ModelResponse> {
     let optimizedContext = context;
 
@@ -304,7 +307,7 @@ export class AIOrchestrator {
       });
     }
 
-    return await this.localExecutor.execute(target, prompt, optimizedContext);
+    return await this.localExecutor.execute(target, prompt, optimizedContext, history);
   }
 
   private async executeWithClaude(
@@ -341,6 +344,16 @@ export class AIOrchestrator {
   private estimateFileCount(codeContext: string): number {
     const fileIndicators = codeContext.match(/\/\/ .+\.(ts|js|py|java|go|rs)/g);
     return fileIndicators ? fileIndicators.length : 1;
+  }
+
+  private formatHistoryForLocal(history?: any[]): string | undefined {
+    if (!history || history.length === 0) {
+      return undefined;
+    }
+
+    return history
+      .map(turn => `${turn.role === 'user' ? 'User' : 'Assistant'}: ${turn.content}`)
+      .join('\n\n');
   }
 
   private logRequest(

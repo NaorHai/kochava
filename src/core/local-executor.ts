@@ -51,7 +51,8 @@ export class LocalExecutor {
   async execute(
     target: RouteTarget,
     prompt: string,
-    context?: string
+    context?: string,
+    history?: string
   ): Promise<ModelResponse> {
     if (target === 'claude') {
       throw new Error('LocalExecutor cannot handle Claude routing');
@@ -65,8 +66,8 @@ export class LocalExecutor {
     const startTime = Date.now();
 
     try {
-      // Build prompt with tool awareness
-      let fullPrompt = this.buildPromptWithTools(prompt, context);
+      // Build prompt with tool awareness and conversation history
+      let fullPrompt = this.buildPromptWithTools(prompt, context, history);
 
       // Execute with tool loop (max 3 tool calls)
       let finalResponse = '';
@@ -155,13 +156,18 @@ export class LocalExecutor {
     }
   }
 
-  private buildPromptWithTools(prompt: string, context?: string): string {
+  private buildPromptWithTools(prompt: string, context?: string, history?: string): string {
     let fullPrompt = '';
 
     // Add tools if available
     if (this.toolsEnabled && this.toolCatalog) {
       const toolsSection = this.toolDiscovery.formatToolsForPrompt(this.toolCatalog);
       fullPrompt += toolsSection;
+    }
+
+    // Add conversation history for context continuity
+    if (history) {
+      fullPrompt += `\nConversation History:\n${history}\n`;
     }
 
     // Add context

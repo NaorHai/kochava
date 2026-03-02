@@ -306,17 +306,34 @@ async function runInteractiveMode(forceModel?: string) {
 
     // Process regular queries
     try {
-      // Show thinking indicator
-      const thinkingWords = ['Thinking', 'Pondering', 'Analyzing', 'Processing', 'Considering', 'Evaluating'];
+      // Show thinking indicator (no newline, overwrite current line)
+      const thinkingWords = [
+        'Thinking', 'Pondering', 'Analyzing', 'Processing', 'Considering', 'Evaluating',
+        'Contemplating', 'Deliberating', 'Reasoning', 'Reflecting', 'Meditating', 'Ruminating',
+        'Brainstorming', 'Ideating', 'Synthesizing', 'Formulating', 'Conceptualizing', 'Theorizing',
+        'Calculating', 'Computing', 'Deducing', 'Inferring', 'Extrapolating', 'Interpolating',
+        'Investigating', 'Exploring', 'Examining', 'Scrutinizing', 'Inspecting', 'Probing',
+        'Deciphering', 'Decoding', 'Unraveling', 'Untangling', 'Dissecting', 'Parsing',
+        'Strategizing', 'Planning', 'Orchestrating', 'Choreographing', 'Architecting', 'Designing',
+        'Crafting', 'Engineering', 'Constructing', 'Building', 'Assembling', 'Composing',
+        'Optimizing', 'Refining', 'Polishing', 'Enhancing', 'Perfecting', 'Fine-tuning',
+        'Discovering', 'Uncovering', 'Revealing', 'Illuminating', 'Clarifying', 'Elucidating',
+        'Navigating', 'Traversing', 'Journeying', 'Venturing', 'Pioneering', 'Trailblazing',
+        'Synthesizing', 'Integrating', 'Merging', 'Fusing', 'Blending', 'Harmonizing',
+        'Envisioning', 'Imagining', 'Visualizing', 'Dreaming', 'Innovating', 'Creating',
+        'Resolving', 'Solving', 'Cracking', 'Unlocking', 'Breaking', 'Figuring',
+        'Calibrating', 'Adjusting', 'Tuning', 'Balancing', 'Aligning', 'Synchronizing',
+        'Channeling', 'Focusing', 'Concentrating', 'Honing', 'Zeroing', 'Targeting',
+        'Brewing', 'Cooking', 'Baking', 'Simmering', 'Distilling', 'Fermenting',
+        'Weaving', 'Knitting', 'Stitching', 'Threading', 'Spinning', 'Lacing'
+      ];
       const thinkingWord = thinkingWords[Math.floor(Math.random() * thinkingWords.length)];
-      process.stdout.write(chalk.dim(`\n${thinkingWord}...`));
+      process.stdout.write('\r' + chalk.dim(`${thinkingWord}...`));
 
       const response = await orchestrator.process(input, undefined, forceModel);
 
-      // Clear thinking indicator
+      // Clear thinking indicator and print response
       process.stdout.write('\r' + ' '.repeat(50) + '\r');
-
-      // Clean output - just the response content
       console.log(chalk.white(`${response.content}\n`));
 
       // Minimal footer - just model name
