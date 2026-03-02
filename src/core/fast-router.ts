@@ -51,7 +51,19 @@ export class FastRouter {
       return 'local_compress';
     }
 
-    // 6. Action verbs suggest general tasks → local_general
+    // 6. API/External data queries → Claude (needs MCP tools)
+    const apiKeywords = [
+      'github', 'gh ', 'slack', 'jira', 'gus', 'confluence',
+      'pr ', 'pull request', 'commit', 'issue', 'my repo',
+      'api', 'endpoint', 'database', 'query db'
+    ];
+    const needsAPI = apiKeywords.some(kw => input.includes(kw));
+    if (needsAPI) {
+      logger.debug('Fast route: API/External data → Claude');
+      return 'claude';
+    }
+
+    // 7. Action verbs suggest general tasks → local_general
     const actionVerbs = ['get', 'find', 'search', 'list', 'show', 'fetch', 'retrieve', 'check'];
     const hasActionVerb = actionVerbs.some(verb => {
       // Match word boundaries to avoid false positives
@@ -63,7 +75,7 @@ export class FastRouter {
       return 'local_general';
     }
 
-    // 7. Questions and conversations → local_general
+    // 8. Questions and conversations → local_general
     const questionPatterns = [
       /^(what|how|why|when|where|who|can|should|would|is|are|do|does)/i,
       /\?$/
