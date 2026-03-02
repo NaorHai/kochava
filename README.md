@@ -55,6 +55,8 @@ kochava                  # Start interactive conversation (default)
 kochava "your question"  # Single query mode
 kochava --stats          # Show statistics
 kochava --file code.ts "explain this"
+kochava --model local    # Force local models only
+kochava --model claude   # Force Claude API
 ```
 
 ### Docker Mode
