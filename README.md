@@ -60,6 +60,11 @@ kochava --stats          # Show statistics
 kochava --file code.ts "explain this"
 kochava --model local    # Force local models only
 kochava --model claude   # Force Claude API
+
+# Interactive mode features:
+# - Type "/" for arrow-navigable skill menu
+# - Type to filter, ↑↓ to navigate, Enter to select
+# - Auto-complete with Tab
 ```
 
 ### Docker Mode
