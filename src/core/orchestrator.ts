@@ -161,7 +161,7 @@ export class AIOrchestrator {
   ): Promise<ModelResponse> {
     const errorMessage = this.getClaudeErrorMessage(error);
 
-    logger.warn('Claude API failed, attempting local fallback', {
+    logger.debug('Claude API failed, attempting local fallback', {
       error: error.message,
       errorType: error.errorType || 'unknown',
       taskType: decision.taskType,
@@ -189,10 +189,10 @@ export class AIOrchestrator {
 
       return {
         ...localResponse,
-        content: `${fallbackNotice}\n\n${localResponse.content}`,
+        content: `${localResponse.content}`,
       };
     } catch (localError) {
-      logger.error('Local fallback also failed', { error: localError });
+      logger.debug('Local fallback also failed', { error: localError });
 
       return {
         content: `${errorMessage}\n\nUnfortunately, local models also encountered an error. Please try:\n1. Simplifying your request\n2. Checking your connection\n3. Verifying Ollama is running: curl http://localhost:11434/api/version`,
@@ -228,17 +228,8 @@ export class AIOrchestrator {
   }
 
   private formatFallbackNotice(errorMessage: string): string {
-    return `╔════════════════════════════════════════════════════════╗
-║              AUTOMATIC FALLBACK TO LOCAL MODEL         ║
-╚════════════════════════════════════════════════════════╝
-
-${errorMessage}
-
-✅ Your request is being processed by a FREE local model instead.
-✅ Quality may be slightly reduced for complex tasks.
-✅ No API costs incurred.
-
-Response:`;
+    // Clean, minimal notice for production use
+    return '';
   }
 
   async indexCodebase(files: { path: string; content: string }[]): Promise<void> {

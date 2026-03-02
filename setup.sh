@@ -101,10 +101,11 @@ if [ "$INSTALL_TYPE" = "docker" ]; then
     echo -e "${CYAN}📝 Creating .env file...${NC}"
     cp .env.example .env
 
-    # Try to extract Claude API key and Bedrock URL from Claude Code settings
+    # Try to extract Claude API key and Bedrock settings from Claude Code settings
     if command -v jq &> /dev/null && [ -f "$HOME/.claude/settings.json" ]; then
       API_KEY=$(jq -r '.env.ANTHROPIC_AUTH_TOKEN // empty' "$HOME/.claude/settings.json" 2>/dev/null)
       BEDROCK_URL=$(jq -r '.env.ANTHROPIC_BEDROCK_BASE_URL // empty' "$HOME/.claude/settings.json" 2>/dev/null)
+      SKIP_BEDROCK_AUTH=$(jq -r '.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH // empty' "$HOME/.claude/settings.json" 2>/dev/null)
 
       if [ -n "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
         echo -e "${GREEN}✓ Found Claude API key in settings${NC}"
@@ -116,6 +117,12 @@ if [ "$INSTALL_TYPE" = "docker" ]; then
         echo -e "${GREEN}✓ Found Bedrock base URL in settings${NC}"
         sed -i.bak "s|ANTHROPIC_BEDROCK_BASE_URL=.*|ANTHROPIC_BEDROCK_BASE_URL=$BEDROCK_URL|" .env
         rm .env.bak 2>/dev/null || true
+
+        if [ -n "$SKIP_BEDROCK_AUTH" ] && [ "$SKIP_BEDROCK_AUTH" != "null" ]; then
+          echo -e "${GREEN}✓ Bedrock auth mode configured${NC}"
+          sed -i.bak "s|CLAUDE_CODE_SKIP_BEDROCK_AUTH=.*|CLAUDE_CODE_SKIP_BEDROCK_AUTH=$SKIP_BEDROCK_AUTH|" .env
+          rm .env.bak 2>/dev/null || true
+        fi
       fi
     fi
 
@@ -225,10 +232,11 @@ else
     cp .env.example .env
     echo -e "${GREEN}✓ .env created${NC}"
 
-    # Try to extract Claude API key and Bedrock URL from Claude Code settings
+    # Try to extract Claude API key and Bedrock settings from Claude Code settings
     if command -v jq &> /dev/null && [ -f "$HOME/.claude/settings.json" ]; then
       API_KEY=$(jq -r '.env.ANTHROPIC_AUTH_TOKEN // empty' "$HOME/.claude/settings.json" 2>/dev/null)
       BEDROCK_URL=$(jq -r '.env.ANTHROPIC_BEDROCK_BASE_URL // empty' "$HOME/.claude/settings.json" 2>/dev/null)
+      SKIP_BEDROCK_AUTH=$(jq -r '.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH // empty' "$HOME/.claude/settings.json" 2>/dev/null)
 
       if [ -n "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
         echo -e "${GREEN}✓ Found Claude API key in settings${NC}"
@@ -242,6 +250,11 @@ else
         sed -i.bak "s|ANTHROPIC_BEDROCK_BASE_URL=.*|ANTHROPIC_BEDROCK_BASE_URL=$BEDROCK_URL|" .env
         rm .env.bak 2>/dev/null || true
         echo -e "${GREEN}✓ Bedrock endpoint configured${NC}"
+
+        if [ -n "$SKIP_BEDROCK_AUTH" ] && [ "$SKIP_BEDROCK_AUTH" != "null" ]; then
+          sed -i.bak "s|CLAUDE_CODE_SKIP_BEDROCK_AUTH=.*|CLAUDE_CODE_SKIP_BEDROCK_AUTH=$SKIP_BEDROCK_AUTH|" .env
+          rm .env.bak 2>/dev/null || true
+        fi
       fi
     fi
   else

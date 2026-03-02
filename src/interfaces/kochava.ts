@@ -222,11 +222,12 @@ async function showStats() {
 async function initOrchestrator(): Promise<AIOrchestrator> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const bedrockBaseURL = process.env.ANTHROPIC_BEDROCK_BASE_URL;
+  const skipBedrockAuth = process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH === '1';
 
   if (!apiKey || apiKey === 'none') {
     console.log(chalk.yellow('⚠️  No Claude API key set - using FREE local models only\n'));
   } else if (bedrockBaseURL) {
-    logger.debug('Using AWS Bedrock endpoint');
+    logger.debug('Using AWS Bedrock endpoint', { skipAuth: skipBedrockAuth });
   }
 
   const configDir = path.join(__dirname, '../../config');
@@ -237,7 +238,10 @@ async function initOrchestrator(): Promise<AIOrchestrator> {
     await fs.readFile(path.join(configDir, 'model.config.json'), 'utf-8')
   );
 
-  const orchestrator = new AIOrchestrator(routingConfig, modelConfig, apiKey || 'none', bedrockBaseURL);
+  // Use dummy API key for Bedrock if auth is skipped (gateway handles auth)
+  const finalApiKey = bedrockBaseURL && skipBedrockAuth ? 'bedrock-gateway' : (apiKey || 'none');
+
+  const orchestrator = new AIOrchestrator(routingConfig, modelConfig, finalApiKey, bedrockBaseURL);
   await orchestrator.initialize();
 
   return orchestrator;

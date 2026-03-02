@@ -5,17 +5,23 @@ import logger from '../utils/logger.js';
 export class ClaudeSupervisor {
   private client: ClaudeClient;
   private enabled: boolean;
+  private apiKeyValid: boolean = true;
 
   constructor(client: ClaudeClient, enabled: boolean = true) {
     this.client = client;
     this.enabled = enabled;
   }
 
+  disable(): void {
+    this.apiKeyValid = false;
+    this.enabled = false;
+  }
+
   async shouldOverrideRouting(
     decision: RoutingDecision,
     userInput: string
   ): Promise<{ override: boolean; reason?: string }> {
-    if (!this.enabled || decision.target === 'claude') {
+    if (!this.enabled || !this.apiKeyValid || decision.target === 'claude') {
       return { override: false };
     }
 
@@ -46,8 +52,14 @@ Keep response under 50 words.`;
       }
 
       return { override: false };
-    } catch (error) {
-      logger.error('Supervisor check failed', { error });
+    } catch (error: any) {
+      // Disable supervisor if API key is invalid
+      if (error.errorType === 'invalid_api_key') {
+        logger.debug('Supervisor disabled due to invalid API key');
+        this.disable();
+      } else {
+        logger.debug('Supervisor check failed', { errorType: error.errorType });
+      }
       return { override: false };
     }
   }

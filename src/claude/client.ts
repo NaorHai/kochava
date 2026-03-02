@@ -114,7 +114,7 @@ export class ClaudeClient {
     } catch (error: any) {
       const errorType = this.classifyError(error);
 
-      logger.error('Claude API call failed', {
+      logger.debug('Claude API call failed', {
         error: error.message,
         type: errorType,
         tokensUsed: this.tokensUsed,
