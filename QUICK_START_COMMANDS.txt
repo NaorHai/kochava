@@ -9,7 +9,7 @@ Copy/paste these commands to get started quickly!
 📦 INSTALLATION (First Time Only)
 ═══════════════════════════════════════════════════════════
 
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 ./scripts/bootstrap.sh
 
 ⏱️  Takes: 15-20 minutes (one-time)
@@ -22,7 +22,7 @@ cd ~/Documents/Private/ai-router
 ═══════════════════════════════════════════════════════════
 
 # Start interactive CLI
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 ./run.sh
 
 # Now type your questions:
@@ -37,7 +37,7 @@ cd ~/Documents/Private/ai-router
 ═══════════════════════════════════════════════════════════
 
 # Start HTTP server
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 npm run server
 
 # Test from another terminal:
@@ -54,7 +54,7 @@ curl http://localhost:3000/api/metrics
 ═══════════════════════════════════════════════════════════
 
 # Start plugin server
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 npm run plugin
 
 # Configure Claude Desktop:
@@ -161,11 +161,11 @@ nano config/model.config.json
 📁 FILE LOCATIONS
 ═══════════════════════════════════════════════════════════
 
-Project:     ~/Documents/Private/ai-router
-Logs:        ~/Documents/Private/ai-router/logs/
-Config:      ~/Documents/Private/ai-router/config/
+Project:     ~/Documents/Private/kochava
+Logs:        ~/Documents/Private/kochava/logs/
+Config:      ~/Documents/Private/kochava/config/
 Models:      ~/.ollama/models/ (managed by Ollama)
-Env:         ~/Documents/Private/ai-router/.env
+Env:         ~/Documents/Private/kochava/.env
 
 ═══════════════════════════════════════════════════════════
 
@@ -173,7 +173,7 @@ Env:         ~/Documents/Private/ai-router/.env
 ═══════════════════════════════════════════════════════════
 
 # Morning: Start session
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 ./run.sh
 
 # Work: Ask questions
@@ -236,7 +236,7 @@ https://github.com/your-repo/issues
 ✨ MOST COMMON WORKFLOW
 ═══════════════════════════════════════════════════════════
 
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 ./run.sh
 
 > Format this: function foo(){return 1}

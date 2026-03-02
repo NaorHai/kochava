@@ -43,7 +43,7 @@ User Output
 ### One-Command Installation
 
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 ./scripts/bootstrap.sh
 ```
 

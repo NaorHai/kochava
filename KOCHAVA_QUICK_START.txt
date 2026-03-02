@@ -7,7 +7,7 @@
 ═══════════════════════════════════════════════════════════
 
 1. Install everything:
-   cd ~/Documents/Private/ai-router
+   cd ~/Documents/Private/kochava
    ./scripts/bootstrap.sh
    
 2. Install global command:
@@ -106,9 +106,9 @@ kochava -v "query"                     # Verbose mode
 📚 MORE HELP
 ═══════════════════════════════════════════════════════════
 
-Full guide:       less ~/Documents/Private/ai-router/KOCHAVA_GUIDE.md
-Documentation:    less ~/Documents/Private/ai-router/README.md
-Troubleshooting:  less ~/Documents/Private/ai-router/HOW_TO_USE.md
+Full guide:       less ~/Documents/Private/kochava/KOCHAVA_GUIDE.md
+Documentation:    less ~/Documents/Private/kochava/README.md
+Troubleshooting:  less ~/Documents/Private/kochava/HOW_TO_USE.md
 
 ═══════════════════════════════════════════════════════════
 

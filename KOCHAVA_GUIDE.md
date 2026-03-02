@@ -6,7 +6,7 @@
 
 ### Step 1: Install the Project
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 ./scripts/bootstrap.sh
 ```
 
@@ -291,7 +291,7 @@ kochava --stats
 ### Command Not Found
 ```bash
 # Reinstall
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 npm run install-command
 ```
 
@@ -306,7 +306,7 @@ open /Applications/Ollama.app
 
 ### Update After Changes
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 npm run build
 npm run install-command
 ```
@@ -317,7 +317,7 @@ npm run install-command
 
 To remove the global command:
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 npm run uninstall-command
 ```
 
@@ -325,9 +325,9 @@ npm run uninstall-command
 
 ## 📚 More Information
 
-- Full docs: `~/Documents/Private/ai-router/README.md`
-- Architecture: `~/Documents/Private/ai-router/ARCHITECTURE.md`
-- Local models: `~/Documents/Private/ai-router/LOCAL_MODELS.md`
+- Full docs: `~/Documents/Private/kochava/README.md`
+- Architecture: `~/Documents/Private/kochava/ARCHITECTURE.md`
+- Local models: `~/Documents/Private/kochava/LOCAL_MODELS.md`
 
 ---
 

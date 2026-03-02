@@ -4,7 +4,7 @@
 
 ### Step 1: Navigate to Project
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 ```
 
 ### Step 2: Run Bootstrap (One Command Does Everything!)
@@ -32,7 +32,7 @@ cd ~/Documents/Private/ai-router
 ### Option 1: Interactive CLI (Most Common)
 
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 ./run.sh
 ```
 
@@ -156,7 +156,7 @@ or just press `Ctrl+C`
 
 ### Start Server
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 npm run server
 ```
 
@@ -214,7 +214,7 @@ curl http://localhost:3000/api/metrics
 
 ### Start Plugin Server
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 npm run plugin
 ```
 
@@ -278,13 +278,13 @@ Restart Claude Desktop, and it will automatically route simple requests through 
 ### Check Logs
 ```bash
 # Routing decisions
-tail -f ~/Documents/Private/ai-router/logs/routing.log
+tail -f ~/Documents/Private/kochava/logs/routing.log
 
 # Token usage
-tail -f ~/Documents/Private/ai-router/logs/token_usage.log
+tail -f ~/Documents/Private/kochava/logs/token_usage.log
 
 # Fallback events
-tail -f ~/Documents/Private/ai-router/logs/escalation.log
+tail -f ~/Documents/Private/kochava/logs/escalation.log
 ```
 
 ### View Metrics (Server Mode)
@@ -298,7 +298,7 @@ curl http://localhost:3000/api/metrics | jq
 
 ### Workflow 1: Morning Coding Session
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 ./run.sh
 
 > Format this: function foo(){return 1}
@@ -338,7 +338,7 @@ CLAUDE_TOKEN_BUDGET=8000  # Increase for longer sessions
 ```
 
 ### Change Models
-Edit `~/Documents/Private/ai-router/config/model.config.json`:
+Edit `~/Documents/Private/kochava/config/model.config.json`:
 ```json
 {
   "models": {
@@ -363,7 +363,7 @@ All requests will use local models only.
 
 ### Issue: `./run.sh` command not found
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 chmod +x run.sh scripts/*.sh
 ./run.sh
 ```
@@ -382,7 +382,7 @@ bash scripts/install_models.sh
 
 ### Issue: Build errors
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 rm -rf dist node_modules
 npm install
 npm run build
@@ -396,7 +396,7 @@ npm run build
 ### Issue: API key not working
 ```bash
 # Edit .env file
-nano ~/Documents/Private/ai-router/.env
+nano ~/Documents/Private/kochava/.env
 
 # Add your key
 ANTHROPIC_API_KEY=sk-ant-your-key-here
@@ -475,7 +475,7 @@ Check `/stats` daily. You'll see massive token savings!
 
 ```bash
 # Install
-cd ~/Documents/Private/ai-router && ./scripts/bootstrap.sh
+cd ~/Documents/Private/kochava && ./scripts/bootstrap.sh
 
 # Run CLI
 ./run.sh
@@ -517,7 +517,7 @@ npm run plugin
 You're ready to use AI Router. Start with:
 
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 ./run.sh
 ```
 

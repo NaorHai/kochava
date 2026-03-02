@@ -13,7 +13,7 @@ Get AI Router running in 5 minutes.
 ## Installation
 
 ```bash
-cd ~/Documents/Private/ai-router
+cd ~/Documents/Private/kochava
 ./scripts/bootstrap.sh
 ```
 
