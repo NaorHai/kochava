@@ -170,40 +170,12 @@ async function runInteractiveMode(forceModel?: string) {
     completer: (line: string) => {
       const trimmed = line.trim();
 
-      // Special handling for just "/"
-      if (trimmed === '/') {
-        // Show all commands nicely formatted
-        console.log('\n' + chalk.cyan.bold('Available commands & skills:'));
-        const cols = 3;
-        for (let i = 0; i < Math.min(allCommands.length, 30); i += cols) {
-          const row = allCommands.slice(i, i + cols);
-          console.log('  ' + row.map(c => chalk.white(c.padEnd(20))).join(''));
-        }
-        if (allCommands.length > 30) {
-          console.log(chalk.gray(`  ... and ${allCommands.length - 30} more`));
-        }
-        console.log(chalk.gray('\nType to filter (e.g., /adlc-), press Tab to cycle\n'));
-        return [allCommands, trimmed];
-      }
-
       // If starts with /, complete commands/skills
       if (trimmed.startsWith('/')) {
         const hits = allCommands.filter(c => c.toLowerCase().startsWith(trimmed.toLowerCase()));
 
-        // Show filtered results inline
-        if (hits.length > 0 && hits.length <= 15) {
-          console.log('\n' + chalk.cyan(`Matching (${hits.length}):`));
-          const cols = 3;
-          for (let i = 0; i < hits.length; i += cols) {
-            const row = hits.slice(i, i + cols);
-            console.log('  ' + row.map(c => chalk.white(c.padEnd(20))).join(''));
-          }
-          console.log();
-        }
-
         // If no matches, show all
         if (hits.length === 0) {
-          console.log('\n' + chalk.yellow('No matches. Showing all:'));
           return [allCommands, trimmed];
         }
 
@@ -215,10 +187,36 @@ async function runInteractiveMode(forceModel?: string) {
     }
   });
 
+  // Override _ttyWrite to detect "/" and show completions immediately
+  const originalTtyWrite = (rl as any)._ttyWrite;
+  (rl as any)._ttyWrite = function(s: string, key: any) {
+    // Call original first
+    originalTtyWrite.call(this, s, key);
+
+    // Check if current line is exactly "/"
+    const currentLine = (this as any).line || '';
+    if (currentLine === '/' && s === '/') {
+      // User just typed "/", show all commands
+      setTimeout(() => {
+        console.log('\n' + chalk.cyan.bold('Available commands & skills:'));
+        const cols = 3;
+        for (let i = 0; i < Math.min(allCommands.length, 30); i += cols) {
+          const row = allCommands.slice(i, i + cols);
+          console.log('  ' + row.map(c => chalk.white(c.padEnd(20))).join(''));
+        }
+        if (allCommands.length > 30) {
+          console.log(chalk.gray(`  ... and ${allCommands.length - 30} more`));
+        }
+        console.log(chalk.gray('\nKeep typing to filter • Tab to cycle • Enter to select\n'));
+        (this as any)._refreshLine();
+      }, 10);
+    }
+  };
+
   // Show startup tip with clear instructions
   if (availableSkills.length > 0) {
     console.log(chalk.cyan.bold(`✨ ${availableSkills.length} skills loaded!`));
-    console.log(chalk.gray(`   Type "/" then Tab to see all • Type "/adlc-" then Tab to filter\n`));
+    console.log(chalk.gray(`   Just type "/" to see all • Keep typing to filter\n`));
   }
 
   rl.prompt();
