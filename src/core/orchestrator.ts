@@ -151,14 +151,19 @@ export class AIOrchestrator {
       }
     } else {
       // Only apply supervisor override if model is not forced
-      const override = await this.supervisor.shouldOverrideRouting(decision, input);
-      if (override.override) {
-        this.escalationManager.logEscalation(
-          decision,
-          decision.target,
-          override.reason || 'Supervisor override'
-        );
-        decision.target = 'claude';
+      // Skip supervisor for direct skill invocations (they're meant to run locally)
+      const isSkillInvocation = input.trim().startsWith('/');
+
+      if (!isSkillInvocation) {
+        const override = await this.supervisor.shouldOverrideRouting(decision, input);
+        if (override.override) {
+          this.escalationManager.logEscalation(
+            decision,
+            decision.target,
+            override.reason || 'Supervisor override'
+          );
+          decision.target = 'claude';
+        }
       }
     }
 

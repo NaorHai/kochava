@@ -78,6 +78,7 @@ export class LocalExecutor {
     try {
       // Check if this is a direct skill invocation (e.g., "/budget", "/skill-name args")
       const directSkillResult = await this.tryDirectSkillExecution(prompt, context, history);
+
       if (directSkillResult) {
         return {
           content: directSkillResult.output,
@@ -358,6 +359,7 @@ export class LocalExecutor {
 
     // Check if it's a skill
     const skill = this.toolCatalog.skills.find(s => s.name === tool);
+
     if (skill) {
       const args = params.args || Object.entries(params)
         .map(([k, v]) => `${k}=${v}`)

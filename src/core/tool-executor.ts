@@ -24,7 +24,35 @@ export class ToolExecutor {
       const skillContent = await this.readSkillDefinition(skill.name);
 
       if (skillContent) {
-        // Return the skill instructions for the model to follow
+        // Parse skill metadata to determine execution method
+        const metadata = this.parseSkillMetadata(skillContent);
+
+        logger.debug('Parsed skill metadata', {
+          skill: skill.name,
+          hasAllowedTools: !!metadata.allowedTools,
+          allowedTools: metadata.allowedTools
+        });
+
+        if (metadata.allowedTools?.includes('Bash')) {
+          // Extract and execute bash commands directly
+          const bashCommands = this.extractBashCommands(skillContent);
+
+          logger.debug('Extracted bash commands', {
+            skill: skill.name,
+            commandCount: bashCommands.length
+          });
+
+          if (bashCommands.length > 0) {
+            logger.debug('Executing bash commands from skill', {
+              skill: skill.name,
+              commandCount: bashCommands.length
+            });
+
+            return await this.executeBashCommands(bashCommands, skill.name);
+          }
+        }
+
+        // For non-bash skills, return instructions for model to follow
         return {
           success: true,
           output: skillContent,
@@ -32,46 +60,11 @@ export class ToolExecutor {
         };
       }
 
-      // Fallback: Try executing via claude command
-      const commands = [
-        `claude /${skill.name} ${args}`,
-        `claude --skill ${skill.name} ${args}`,
-        `echo "/${skill.name} ${args}" | claude`
-      ];
-
-      let lastError: any;
-
-      for (const command of commands) {
-        try {
-          const { stdout, stderr } = await execAsync(command, {
-            timeout: 60000,
-            maxBuffer: 1024 * 1024 * 10,
-            env: { ...process.env, CLAUDE_NONINTERACTIVE: '1' }
-          });
-
-          const output = stdout || stderr;
-          if (output && output.length > 0) {
-            return {
-              success: true,
-              output: output.trim()
-            };
-          }
-        } catch (error: any) {
-          lastError = error;
-          continue;
-        }
-      }
-
-      // All methods failed
-      logger.debug('Skill execution failed', {
-        skill: skill.name,
-        error: lastError?.message
-      });
-
+      // Skill definition not found
       return {
         success: false,
         output: '',
-        error: `Skill '${skill.name}' not available. Make sure the skill file exists in ~/.claude/commands/${skill.name}.md`
+        error: `Skill '${skill.name}' definition not found`
       };
     } catch (error: any) {
       logger.debug('Skill execution failed', {
@@ -85,6 +78,90 @@ export class ToolExecutor {
         error: error.message
       };
     }
+  }
+
+  /**
+   * Parse skill YAML frontmatter metadata
+   */
+  private parseSkillMetadata(content: string): { allowedTools?: string[] } {
+    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!frontmatterMatch) {
+      return {};
+    }
+
+    const metadata: any = {};
+    const lines = frontmatterMatch[1].split('\n');
+
+    for (const line of lines) {
+      if (line.includes('allowed-tools:')) {
+        const toolsStr = line.split(':')[1]?.trim();
+        metadata.allowedTools = toolsStr ? [toolsStr] : [];
+      }
+    }
+
+    return metadata;
+  }
+
+  /**
+   * Extract bash commands from markdown code blocks
+   * Supports: ```bash, ```sh, ```shell
+   */
+  private extractBashCommands(content: string): string[] {
+    const commands: string[] = [];
+    const codeBlockRegex = /```(?:bash|sh|shell)\n([\s\S]*?)```/g;
+
+    let match;
+    while ((match = codeBlockRegex.exec(content)) !== null) {
+      const command = match[1].trim();
+      if (command && !command.startsWith('#') && command.length > 0) {
+        commands.push(command);
+      }
+    }
+
+    return commands;
+  }
+
+  /**
+   * Execute bash commands and return results
+   */
+  private async executeBashCommands(commands: string[], skillName: string): Promise<ToolExecutionResult> {
+    const results: string[] = [];
+    let hasError = false;
+
+    for (const command of commands) {
+      try {
+        logger.debug('Executing bash command', {
+          skill: skillName,
+          command: command.substring(0, 100)
+        });
+
+        const { stdout, stderr } = await execAsync(command, {
+          timeout: 30000, // 30 second timeout per command
+          maxBuffer: 1024 * 1024 * 10,
+          shell: '/bin/bash'
+        });
+
+        const output = (stdout || stderr).trim();
+        if (output) {
+          results.push(output);
+        }
+      } catch (error: any) {
+        hasError = true;
+        const errorMsg = error.stderr || error.message || 'Command execution failed';
+        results.push(`Error: ${errorMsg}`);
+        logger.debug('Bash command failed', {
+          skill: skillName,
+          error: errorMsg
+        });
+      }
+    }
+
+    const output = results.join('\n\n');
+
+    return {
+      success: !hasError,
+      output: output || 'Command executed but produced no output'
+    };
   }
 
   private async readSkillDefinition(skillName: string): Promise<string | null> {
