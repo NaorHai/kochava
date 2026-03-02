@@ -50,6 +50,8 @@ program
   .option('-c, --chat', 'Start interactive chat mode')
   .option('-i, --interactive', 'Start interactive chat mode (alias for --chat)')
   .option('-s, --stats', 'Show usage statistics')
+  .option('--sessions', 'List recent sessions')
+  .option('--session <id>', 'Resume a previous session by ID')
   .option('-r, --reset', 'Reset session and token counters')
   .option('-v, --verbose', 'Enable verbose output')
   .option('-m, --model <type>', 'Force specific model (local or claude)')
@@ -62,20 +64,25 @@ program
         return;
       }
 
+      if (options.sessions) {
+        await listSessions();
+        return;
+      }
+
       if (options.reset) {
         console.log(chalk.yellow('✓ Session reset (restart kochava to apply)'));
         return;
       }
 
       if (options.chat || options.interactive) {
-        await runInteractiveMode(options.model);
+        await runInteractiveMode(options.model, options.session);
         return;
       }
 
       const query = queryParts.join(' ');
       if (!query) {
         // Default to interactive mode (like Claude Code CLI)
-        await runInteractiveMode(options.model);
+        await runInteractiveMode(options.model, options.session);
         return;
       }
 
@@ -89,7 +96,7 @@ program
         }
       }
 
-      await runSingleQuery(query, context, options.verbose, options.model);
+      await runSingleQuery(query, context, options.verbose, options.model, options.session);
     } catch (error: any) {
       console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
       process.exit(1);
@@ -98,12 +105,12 @@ program
 
 program.parse();
 
-async function runSingleQuery(query: string, context?: string, verbose?: boolean, forceModel?: string) {
+async function runSingleQuery(query: string, context?: string, verbose?: boolean, forceModel?: string, sessionId?: string) {
   if (verbose) {
     console.log(chalk.gray('\n→ Initializing kochava...\n'));
   }
 
-  const orchestrator = await initOrchestrator();
+  const orchestrator = await initOrchestrator(sessionId);
 
   if (verbose) {
     console.log(chalk.gray('→ Processing your request...\n'));
@@ -121,8 +128,12 @@ async function runSingleQuery(query: string, context?: string, verbose?: boolean
   );
 }
 
-async function runInteractiveMode(forceModel?: string) {
+async function runInteractiveMode(forceModel?: string, sessionId?: string) {
   console.log(chalk.magenta(KOCHAVA_ART));
+
+  if (sessionId) {
+    console.log(chalk.cyan(`Resuming session: ${sessionId}\n`));
+  }
 
   if (forceModel) {
     const modelType = forceModel.toLowerCase() === 'claude' ? 'Claude API' : 'Local';
@@ -137,10 +148,11 @@ async function runInteractiveMode(forceModel?: string) {
   process.stdout.write(chalk.gray('Loading...'));
 
   const [orchestrator, availableSkills] = await Promise.all([
-    initOrchestrator(),
+    initOrchestrator(sessionId),
     getAvailableSkills()
   ]);
 
+  const currentSessionId = orchestrator.getSessionId();
   const elapsed = Date.now() - startTime;
   process.stdout.write('\r' + ' '.repeat(20) + '\r'); // Clear loading
 
@@ -267,7 +279,10 @@ async function runInteractiveMode(forceModel?: string) {
 
     // Handle built-in commands without thinking indicator
     if (input === '/exit' || input === 'exit' || input === '/quit' || input === 'quit') {
-      console.log(chalk.magenta('\nGoodbye! 👋\n'));
+      await orchestrator.saveSession();
+      console.log(chalk.magenta('\n👋 Goodbye!\n'));
+      console.log(chalk.gray('Session saved:') + ' ' + chalk.cyan(currentSessionId));
+      console.log(chalk.gray('Resume later with:') + ' ' + chalk.white(`kochava --session ${currentSessionId}\n`));
       rl.close();
       process.exit(0);
     }
@@ -352,8 +367,11 @@ async function runInteractiveMode(forceModel?: string) {
     rl.prompt();
   });
 
-  rl.on('close', () => {
-    console.log(chalk.magenta('\nGoodbye! 👋\n'));
+  rl.on('close', async () => {
+    await orchestrator.saveSession();
+    console.log(chalk.magenta('\n👋 Goodbye!\n'));
+    console.log(chalk.gray('Session saved:') + ' ' + chalk.cyan(currentSessionId));
+    console.log(chalk.gray('Resume later with:') + ' ' + chalk.white(`kochava --session ${currentSessionId}\n`));
     process.exit(0);
   });
 }
@@ -363,7 +381,37 @@ async function showStats() {
   displayMetrics(orchestrator);
 }
 
-async function initOrchestrator(): Promise<AIOrchestrator> {
+async function listSessions() {
+  const orchestrator = await initOrchestrator();
+  const sessions = await orchestrator.listRecentSessions();
+
+  if (sessions.length === 0) {
+    console.log(chalk.yellow('\n⚠️  No recent sessions found\n'));
+    return;
+  }
+
+  console.log(chalk.magenta.bold('\n📜 Recent Sessions\n'));
+
+  for (const session of sessions) {
+    const date = new Date(session.lastUpdated);
+    const timeAgo = formatTimeAgo(session.lastUpdated);
+
+    console.log(chalk.cyan(`${session.id}`));
+    console.log(chalk.gray(`  ${session.turnCount} messages • ${timeAgo} • ${date.toLocaleString()}`));
+    console.log(chalk.gray(`  Resume: ${chalk.white(`kochava --session ${session.id}`)}\n`));
+  }
+}
+
+function formatTimeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}
+
+async function initOrchestrator(sessionId?: string): Promise<AIOrchestrator> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const bedrockBaseURL = process.env.ANTHROPIC_BEDROCK_BASE_URL;
   const skipBedrockAuth = process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH === '1';
@@ -385,7 +433,7 @@ async function initOrchestrator(): Promise<AIOrchestrator> {
   // Use dummy API key for Bedrock if auth is skipped (gateway handles auth)
   const finalApiKey = bedrockBaseURL && skipBedrockAuth ? 'bedrock-gateway' : (apiKey || 'none');
 
-  const orchestrator = new AIOrchestrator(routingConfig, modelConfig, finalApiKey, bedrockBaseURL);
+  const orchestrator = new AIOrchestrator(routingConfig, modelConfig, finalApiKey, bedrockBaseURL, sessionId);
   await orchestrator.initialize();
 
   return orchestrator;
@@ -532,7 +580,12 @@ function displayHelp() {
   console.log(chalk.white('  /skill-stats  - See which skills work locally vs need Claude'));
   console.log(chalk.white('  /reset        - Reset session and clear history'));
   console.log(chalk.white('  /help         - Show this help message'));
-  console.log(chalk.white('  /exit         - Exit kochava'));
+  console.log(chalk.white('  /exit         - Exit kochava (saves session)'));
+
+  console.log(chalk.cyan('\nSessions:'));
+  console.log(chalk.white('  --sessions              - List recent sessions'));
+  console.log(chalk.white('  --session <id>          - Resume previous session'));
+  console.log(chalk.dim('  Sessions are saved automatically and last 3 kept'));
 
   console.log(chalk.cyan('\nSkills:'));
   console.log(chalk.white('  /                    - Show all available skills'));

@@ -38,7 +38,7 @@ export class AIOrchestrator {
   private modelConfig: ModelConfig;
   private metrics: UsageMetrics;
 
-  constructor(routingConfig: RoutingConfig, modelConfig: ModelConfig, claudeApiKey: string, bedrockBaseURL?: string) {
+  constructor(routingConfig: RoutingConfig, modelConfig: ModelConfig, claudeApiKey: string, bedrockBaseURL?: string, sessionId?: string) {
     this.routingConfig = routingConfig;
     this.modelConfig = modelConfig;
 
@@ -61,7 +61,8 @@ export class AIOrchestrator {
     this.contextOptimizer = new ContextOptimizer(routingConfig);
     this.memoryManager = new MemoryManager(
       routingConfig,
-      modelConfig.models.compressor.name
+      modelConfig.models.compressor.name,
+      sessionId
     );
     this.escalationManager = new EscalationManager();
     this.skillTracker = new SkillTracker();
@@ -94,11 +95,26 @@ export class AIOrchestrator {
     // Load skill stats
     await this.skillTracker.load();
 
+    // Initialize memory manager and load session if exists
+    await this.memoryManager.initialize();
+
     logger.debug('AI Orchestrator initialized');
   }
 
   getSkillTracker(): SkillTracker {
     return this.skillTracker;
+  }
+
+  getSessionId(): string {
+    return this.memoryManager.getSessionId();
+  }
+
+  async saveSession(): Promise<void> {
+    await this.memoryManager.saveSession();
+  }
+
+  async listRecentSessions(): Promise<{ id: string; lastUpdated: number; turnCount: number }[]> {
+    return await this.memoryManager.listRecentSessions();
   }
 
   async process(input: string, codeContext?: string, forceModel?: string): Promise<ModelResponse> {
@@ -159,6 +175,9 @@ export class AIOrchestrator {
     }
 
     this.memoryManager.addTurn('assistant', response.content);
+
+    // Auto-save session after each interaction
+    await this.memoryManager.saveSession();
 
     const totalLatency = Date.now() - startTime;
     this.metrics.avgLatency =
