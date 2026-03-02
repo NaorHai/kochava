@@ -17,12 +17,14 @@ export class LocalExecutor {
   constructor(
     codeModelName: string,
     compressModelName: string,
+    generalModelName: string,
     enableTools: boolean = true
   ) {
     this.ollama = new Ollama({ host: process.env.OLLAMA_HOST || 'http://localhost:11434' });
     this.modelMap = new Map([
       ['local_code', codeModelName],
-      ['local_compress', compressModelName]
+      ['local_compress', compressModelName],
+      ['local_general', generalModelName]
     ]);
     this.toolDiscovery = new ToolDiscovery();
     this.toolExecutor = new ToolExecutor();

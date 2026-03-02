@@ -7,7 +7,7 @@ export type TaskType =
   | 'architecture'
   | 'multi_file_reasoning';
 
-export type RouteTarget = 'local_code' | 'local_compress' | 'claude';
+export type RouteTarget = 'local_code' | 'local_compress' | 'local_general' | 'claude';
 
 export interface ClassificationResult {
   taskType: TaskType;
@@ -68,6 +68,7 @@ export interface ModelConfig {
     classifier: ModelDef;
     compressor: ModelDef;
     codeEditor: ModelDef;
+    general: ModelDef;
     embedding: ModelDef;
   };
   downloadOrder: string[];
@@ -75,6 +76,7 @@ export interface ModelConfig {
     codeEditors: ModelOption[];
     compressors: ModelOption[];
     classifiers: ModelOption[];
+    general: ModelOption[];
     embeddings: ModelOption[];
   };
   profiles?: Record<string, ModelProfile>;
@@ -93,6 +95,7 @@ export interface ModelProfile {
   models: {
     codeEditor: string;
     compressor: string;
+    general: string;
     classifier: string;
     embedding: string;
   };

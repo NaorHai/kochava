@@ -505,6 +505,7 @@ async function initOrchestrator(sessionId?: string, profileName?: string): Promi
     // Override models with profile
     modelConfig.models.codeEditor.name = profile.models.codeEditor;
     modelConfig.models.compressor.name = profile.models.compressor;
+    modelConfig.models.general.name = profile.models.general;
     modelConfig.models.classifier.name = profile.models.classifier;
     modelConfig.models.embedding.name = profile.models.embedding;
 

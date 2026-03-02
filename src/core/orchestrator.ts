@@ -14,7 +14,8 @@ import {
   RoutingConfig,
   ModelConfig,
   UsageMetrics,
-  RoutingDecision
+  RoutingDecision,
+  RouteTarget
 } from '../types/index.js';
 import logger, { tokenLogger } from '../utils/logger.js';
 import fs from 'fs/promises';
@@ -48,6 +49,7 @@ export class AIOrchestrator {
     this.localExecutor = new LocalExecutor(
       modelConfig.models.codeEditor.name,
       modelConfig.models.compressor.name,
+      modelConfig.models.general.name,
       enableTools
     );
 
@@ -143,8 +145,8 @@ export class AIOrchestrator {
         decision.target = 'claude';
         logger.debug('Forcing Claude model');
       } else if (forceLower === 'local') {
-        decision.target = decision.taskType === 'explanation' ? 'local_compress' : 'local_code';
-        logger.debug('Forcing local model');
+        decision.target = this.selectLocalModel(input, decision.taskType);
+        logger.debug('Forcing local model', { target: decision.target });
       }
     } else {
       // Only apply supervisor override if model is not forced
@@ -170,8 +172,10 @@ export class AIOrchestrator {
         response = await this.handleClaudeFailure(error, decision, input, codeContext, context);
       }
     } else {
+      // Auto-detect if this should use general model
+      const target = this.selectLocalModel(input, decision.taskType);
       const formattedHistory = this.formatHistoryForLocal(context.history);
-      response = await this.executeLocally(decision.target, input, codeContext, formattedHistory);
+      response = await this.executeLocally(target, input, codeContext, formattedHistory);
       this.metrics.localRequests++;
 
       const estimatedClaudeTokens = Math.ceil(response.tokens * 1.5);
@@ -215,9 +219,7 @@ export class AIOrchestrator {
       `Claude failed: ${errorMessage}`
     );
 
-    const fallbackTarget = decision.taskType === 'explanation'
-      ? 'local_compress'
-      : 'local_code';
+    const fallbackTarget = this.selectLocalModel(input, decision.taskType);
 
     try {
       const formattedHistory = this.formatHistoryForLocal(context.history);
@@ -313,7 +315,7 @@ export class AIOrchestrator {
   }
 
   private async executeLocally(
-    target: 'local_code' | 'local_compress',
+    target: 'local_code' | 'local_compress' | 'local_general',
     prompt: string,
     context?: string,
     history?: string
@@ -377,6 +379,34 @@ export class AIOrchestrator {
     return history
       .map(turn => `${turn.role === 'user' ? 'User' : 'Assistant'}: ${turn.content}`)
       .join('\n\n');
+  }
+
+  private selectLocalModel(input: string, taskType: string): 'local_code' | 'local_compress' | 'local_general' {
+    const lowerInput = input.toLowerCase();
+
+    // Check for MCP/API/tool-related keywords
+    const mcpKeywords = [
+      'github', 'pr', 'pull request', 'repo', 'repository',
+      'slack', 'message', 'channel',
+      'confluence', 'page', 'document',
+      'gus', 'work item', 'w-',
+      'get my', 'find my', 'search for', 'list',
+      'api', 'fetch', 'retrieve', 'query'
+    ];
+
+    const isMCPTask = mcpKeywords.some(keyword => lowerInput.includes(keyword));
+
+    if (isMCPTask) {
+      return 'local_general';
+    }
+
+    // Route by task type
+    if (taskType === 'explanation') {
+      return 'local_compress';
+    }
+
+    // Default to code editor
+    return 'local_code';
   }
 
   private logRequest(
