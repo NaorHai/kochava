@@ -153,14 +153,54 @@ export class ToolDiscovery {
   }
 
   private inferToolsFromServer(serverName: string): string[] {
-    // Map common MCP server names to their tools
+    // Map common MCP server names to their comprehensive tool sets
     const serverToolMap: Record<string, string[]> = {
-      'github': ['github_search_code', 'github_get_file', 'github_create_pr', 'github_list_issues'],
-      'slack': ['slack_search_public', 'slack_send_message', 'slack_read_channel'],
-      'confluence': ['confluence_searchContent', 'confluence_getContent', 'confluence_searchSpace'],
-      'gus-mcp': ['query_gus_records'],
-      'cuala': ['cuala_execute_scenario', 'cuala_generate_plan', 'cuala_get_status'],
-      'claude-mem': ['search', 'timeline', 'get_observations', 'save_memory']
+      'github': [
+        // Commit operations
+        'mcp__github__list_commits', 'mcp__github__get_commit',
+        // Branch operations
+        'mcp__github__list_branches', 'mcp__github__create_branch',
+        // Pull request operations
+        'mcp__github__list_pull_requests', 'mcp__github__get_pull_request',
+        'mcp__github__create_pull_request', 'mcp__github__update_pull_request',
+        'mcp__github__merge_pull_request', 'mcp__github__get_pull_request_diff',
+        'mcp__github__get_pull_request_files', 'mcp__github__get_pull_request_comments',
+        // Issue operations
+        'mcp__github__list_issues', 'mcp__github__get_issue', 'mcp__github__create_issue',
+        'mcp__github__update_issue', 'mcp__github__add_issue_comment', 'mcp__github__get_issue_comments',
+        // Code and file operations
+        'mcp__github__search_code', 'mcp__github__get_file_contents',
+        'mcp__github__create_or_update_file', 'mcp__github__push_files',
+        // Repository operations
+        'mcp__github__list_tags', 'mcp__github__get_tag', 'mcp__github__create_repository',
+        'mcp__github__fork_repository', 'mcp__github__search_repositories',
+        // Review operations
+        'mcp__github__create_pending_pull_request_review', 'mcp__github__submit_pending_pull_request_review',
+        'mcp__github__get_pull_request_reviews', 'mcp__github__request_copilot_review'
+      ],
+      'slack': [
+        'mcp__slack__slack_search_public', 'mcp__slack__slack_send_message',
+        'mcp__slack__slack_read_channel', 'mcp__slack__slack_read_thread',
+        'mcp__slack__slack_send_message_draft', 'mcp__slack__slack_schedule_message',
+        'mcp__slack__slack_search_channels', 'mcp__slack__slack_create_canvas',
+        'mcp__slack__slack_read_canvas'
+      ],
+      'confluence': [
+        'mcp__confluence__confluence_searchContent', 'mcp__confluence__confluence_getContent',
+        'mcp__confluence__confluence_searchSpace', 'mcp__confluence__confluence_createContent',
+        'mcp__confluence__confluence_updateContent'
+      ],
+      'gus-mcp': ['mcp__gus_mcp__query_gus_records'],
+      'cuala': [
+        'mcp__cuala__cuala_execute_scenario', 'mcp__cuala__cuala_execute_scenario_async',
+        'mcp__cuala__cuala_generate_plan', 'mcp__cuala__cuala_execute_plan',
+        'mcp__cuala__cuala_get_status', 'mcp__cuala__cuala_get_plan',
+        'mcp__cuala__cuala_list_plans', 'mcp__cuala__cuala_update_plan'
+      ],
+      'claude-mem': [
+        'mcp__claude_mem__search', 'mcp__claude_mem__timeline',
+        'mcp__claude_mem__get_observations', 'mcp__claude_mem__save_memory'
+      ]
     };
 
     // Try exact match
@@ -192,50 +232,90 @@ export class ToolDiscovery {
   }
 
   private getToolDescription(server: string, tool: string): string {
+    // Rich, query-aligned descriptions with natural language variations for semantic matching
     const descriptions: Record<string, Record<string, string>> = {
-      confluence: {
-        confluence_searchContent: 'Search Confluence for documentation and pages',
-        confluence_getContent: 'Get specific Confluence page content by ID',
-        confluence_searchSpace: 'Search for Confluence spaces',
-        confluence_createContent: 'Create new Confluence pages',
-        confluence_updateContent: 'Update existing Confluence pages'
-      },
-      'gus-mcp': {
-        query_gus_records: 'Query GUS work items using natural language'
-      },
       github: {
-        search_code: 'Search GitHub code repositories',
-        github_get_file: 'Get file contents from GitHub',
-        github_create_pr: 'Create pull request on GitHub',
-        github_list_issues: 'List GitHub issues',
-        github_search_code: 'Search code in GitHub repositories',
-        mcp__github__get_file_contents: 'Get file contents from GitHub',
-        mcp__github__create_pull_request: 'Create pull request',
-        mcp__github__search_code: 'Search code in repositories'
+        // Commit operations - natural variations for queries like "list my commits", "recent changes", "commit history"
+        'mcp__github__list_commits': 'List commits, commit history, recent changes, code changes, what was committed, recent code updates, see commits, show commit log, git history, changes made, recent updates by author',
+        'mcp__github__get_commit': 'Get commit details, view specific commit, show commit info, commit changes, what changed in commit, commit diff, inspect commit',
+
+        // Branch operations
+        'mcp__github__list_branches': 'List branches, show branches, all branches, branch names, what branches exist, available branches, git branches',
+        'mcp__github__create_branch': 'Create new branch, make branch, start new branch, branch from, fork branch',
+
+        // Pull request operations - variations for "my PRs", "open PRs", "pull requests", "code review"
+        'mcp__github__list_pull_requests': 'List pull requests, show PRs, my pull requests, open PRs, merge requests, code reviews, pending reviews, list PRs, what pull requests, show merge requests',
+        'mcp__github__get_pull_request': 'Get pull request details, view PR, show pull request, PR info, pull request status, check PR, inspect pull request',
+        'mcp__github__create_pull_request': 'Create pull request, open PR, make pull request, new PR, submit PR, create code review',
+        'mcp__github__update_pull_request': 'Update pull request, modify PR, change PR, edit pull request',
+        'mcp__github__merge_pull_request': 'Merge pull request, merge PR, approve and merge, complete PR, land PR',
+        'mcp__github__get_pull_request_diff': 'Get PR diff, pull request changes, what changed in PR, show PR diff, review changes',
+        'mcp__github__get_pull_request_files': 'Get PR files, files changed in PR, what files in pull request, list PR files',
+        'mcp__github__get_pull_request_comments': 'Get PR comments, pull request comments, review comments, PR discussion, feedback on PR',
+        'mcp__github__get_pull_request_reviews': 'Get PR reviews, pull request reviews, review status, who reviewed, approval status',
+        'mcp__github__request_copilot_review': 'Request Copilot review, get AI review, automated code review',
+        'mcp__github__create_pending_pull_request_review': 'Create PR review, start code review, begin reviewing PR',
+        'mcp__github__submit_pending_pull_request_review': 'Submit PR review, approve PR, request changes, complete review',
+
+        // Issue operations - variations for "bugs", "tasks", "work items"
+        'mcp__github__list_issues': 'List issues, show issues, open issues, bugs, tasks, work items, issue tracker, bug reports, list bugs',
+        'mcp__github__get_issue': 'Get issue details, view issue, show issue, issue info, bug details, task details',
+        'mcp__github__create_issue': 'Create issue, open issue, file bug, new task, report bug, create work item',
+        'mcp__github__update_issue': 'Update issue, modify issue, change issue, edit issue, update bug',
+        'mcp__github__add_issue_comment': 'Add issue comment, comment on issue, reply to issue, discuss issue',
+        'mcp__github__get_issue_comments': 'Get issue comments, issue discussion, comments on issue, issue thread',
+        'mcp__github__search_issues': 'Search issues, find issues, query issues, search bugs, find tasks',
+
+        // Code and file operations
+        'mcp__github__search_code': 'Search code, find code, search repository, code search, grep code, find in files, search codebase',
+        'mcp__github__get_file_contents': 'Get file, read file, view file, file contents, show file, download file, fetch file',
+        'mcp__github__create_or_update_file': 'Create or update file, edit file, modify file, write file, change file',
+        'mcp__github__push_files': 'Push files, upload files, commit files, push changes, upload multiple files',
+        'mcp__github__delete_file': 'Delete file, remove file, delete from repository',
+
+        // Repository operations
+        'mcp__github__list_tags': 'List tags, show tags, release tags, version tags, git tags',
+        'mcp__github__get_tag': 'Get tag details, view tag, show tag, tag info, release info',
+        'mcp__github__create_repository': 'Create repository, new repo, make repository, initialize repo',
+        'mcp__github__fork_repository': 'Fork repository, fork repo, create fork, copy repository',
+        'mcp__github__search_repositories': 'Search repositories, find repos, search projects, find repositories'
       },
       slack: {
-        slack_search_public: 'Search public Slack channels',
-        slack_send_message: 'Send message to Slack channel',
-        slack_read_channel: 'Read messages from Slack channel',
-        slack_send_message_draft: 'Create draft message in Slack',
-        mcp__slack__slack_search_public: 'Search public Slack channels',
-        mcp__slack__slack_send_message: 'Send Slack message'
+        'mcp__slack__slack_search_public': 'Search Slack, find messages, search channels, search conversations, find in Slack, search team chat, query Slack, find discussions',
+        'mcp__slack__slack_send_message': 'Send Slack message, post to Slack, message channel, send to Slack, write message, notify team',
+        'mcp__slack__slack_read_channel': 'Read Slack channel, view channel messages, check channel, channel history, recent messages',
+        'mcp__slack__slack_read_thread': 'Read thread, view thread, thread messages, conversation thread, reply thread',
+        'mcp__slack__slack_send_message_draft': 'Draft Slack message, create draft, prepare message, save draft',
+        'mcp__slack__slack_schedule_message': 'Schedule Slack message, send later, schedule post, delay message',
+        'mcp__slack__slack_search_channels': 'Search channels, find channels, list channels, available channels, channel list',
+        'mcp__slack__slack_create_canvas': 'Create Slack canvas, new canvas, make canvas document',
+        'mcp__slack__slack_read_canvas': 'Read canvas, view canvas, get canvas content, canvas document'
+      },
+      confluence: {
+        'mcp__confluence__confluence_searchContent': 'Search Confluence, find documentation, search docs, search pages, find wiki pages, search knowledge base',
+        'mcp__confluence__confluence_getContent': 'Get Confluence page, read page, view documentation, get doc, fetch page content',
+        'mcp__confluence__confluence_searchSpace': 'Search Confluence space, find space, list spaces, space search',
+        'mcp__confluence__confluence_createContent': 'Create Confluence page, new doc, write documentation, create wiki page',
+        'mcp__confluence__confluence_updateContent': 'Update Confluence page, edit doc, modify documentation, update page'
+      },
+      'gus-mcp': {
+        'mcp__gus_mcp__query_gus_records': 'Query GUS, search work items, find GUS records, get work items, search tasks, find stories, query agile items, search backlog'
       },
       cuala: {
-        cuala_execute_scenario: 'Execute browser automation scenario',
-        cuala_generate_plan: 'Generate test execution plan',
-        cuala_get_status: 'Get test execution status',
-        mcp__cuala__cuala_execute_scenario: 'Execute browser automation'
+        'mcp__cuala__cuala_execute_scenario': 'Execute browser test, run automation, test scenario, browser automation, web test, UI test',
+        'mcp__cuala__cuala_execute_scenario_async': 'Execute browser test async, run automation in background, async test',
+        'mcp__cuala__cuala_generate_plan': 'Generate test plan, create test plan, plan test execution, dry run test',
+        'mcp__cuala__cuala_execute_plan': 'Execute test plan, run test plan, execute planned tests',
+        'mcp__cuala__cuala_get_status': 'Get test status, check test status, test execution status, test results',
+        'mcp__cuala__cuala_get_plan': 'Get test plan, view plan, show plan details',
+        'mcp__cuala__cuala_list_plans': 'List test plans, show all plans, available plans',
+        'mcp__cuala__cuala_update_plan': 'Update test plan, modify plan, edit plan'
       },
       'claude-mem': {
-        search: 'Search memory for observations',
-        timeline: 'Get context timeline around results',
-        get_observations: 'Fetch full observation details',
-        save_memory: 'Save manual memory/observation',
-        mcp__claude_mem__search: 'Search memory',
-        mcp__claude_mem__save_memory: 'Save to memory',
-        mcp__claude_mem__timeline: 'Get context timeline',
-        mcp__claude_mem__get_observations: 'Get observation details'
+        'mcp__claude_mem__search': 'Search memory, find observations, search history, query memory, recall information',
+        'mcp__claude_mem__timeline': 'Get timeline, context timeline, temporal context, event sequence',
+        'mcp__claude_mem__get_observations': 'Get observations, fetch details, observation details, memory details',
+        'mcp__claude_mem__save_memory': 'Save to memory, remember this, store observation, record information, memorize'
       }
     };
 

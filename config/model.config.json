@@ -1,14 +1,14 @@
 {
   "models": {
     "classifier": {
-      "name": "llama3.2:3b",
-      "purpose": "Intent classification and task categorization",
+      "name": "phi3",
+      "purpose": "Intent classification and task categorization - always loaded for routing",
       "maxTokens": 512,
       "temperature": 0.1
     },
     "compressor": {
-      "name": "qwen2.5-coder:7b",
-      "purpose": "Context compression and summarization",
+      "name": "llama3.1:8b",
+      "purpose": "Context compression and summarization - semantic compression tier",
       "maxTokens": 2048,
       "temperature": 0.3
     },
@@ -20,7 +20,7 @@
     },
     "general": {
       "name": "qwen2.5-coder:7b",
-      "purpose": "General tasks, conversations, MCP/API invocations, reading from services",
+      "purpose": "General tasks, conversations, MCP/API invocations, tool use - primary intelligent brain",
       "maxTokens": 2048,
       "temperature": 0.3
     },
@@ -31,10 +31,13 @@
     }
   },
   "downloadOrder": [
-    "llama3.2:3b",
-    "llama3.1:8b",
+    "phi3",
     "qwen2.5-coder:7b",
-    "nomic-embed-text"
+    "llama3.1:8b",
+    "nomic-embed-text",
+    "qwen2.5:14b",
+    "qwen2.5-coder:14b",
+    "llama3.2:3b"
   ],
   "availableModels": {
     "codeEditors": [
@@ -72,8 +75,14 @@
     "compressors": [
       {
         "name": "llama3.1:8b",
-        "description": "Llama 3.1 - Best for summarization",
+        "description": "Llama 3.1 - Best for summarization, strong semantic compression (M4 Max optimized)",
         "size": "5GB",
+        "recommended": true
+      },
+      {
+        "name": "phi3",
+        "description": "Phi 3 - Better structured compression, faster than llama3.2:3b (Fast profile)",
+        "size": "2GB",
         "recommended": true
       },
       {
@@ -83,28 +92,22 @@
         "recommended": false
       },
       {
-        "name": "mistral:7b",
-        "description": "Mistral - Good balance of speed and quality",
-        "size": "4GB",
-        "recommended": false
-      },
-      {
-        "name": "phi3:3b",
-        "description": "Phi 3 - Microsoft's efficient model",
-        "size": "2GB",
+        "name": "qwen2.5-coder:7b",
+        "description": "Qwen 2.5 Coder - Can also handle compression tasks",
+        "size": "5GB",
         "recommended": false
       }
     ],
     "classifiers": [
       {
-        "name": "llama3.2:3b",
-        "description": "Llama 3.2 - Fast and accurate classification",
+        "name": "phi3",
+        "description": "Phi 3 - More reliable structured outputs, better for routing (M4 Max optimized)",
         "size": "2GB",
         "recommended": true
       },
       {
-        "name": "phi3:3b",
-        "description": "Phi 3 - Very fast, lower memory",
+        "name": "llama3.2:3b",
+        "description": "Llama 3.2 - Fast and accurate classification",
         "size": "2GB",
         "recommended": false
       }
@@ -112,8 +115,14 @@
     "general": [
       {
         "name": "qwen2.5-coder:7b",
-        "description": "Qwen 2.5 Coder - Excellent for tool usage, MCP, and API calls",
+        "description": "Qwen 2.5 Coder 7B - Excellent for tool usage, MCP, and API calls",
         "size": "5GB",
+        "recommended": true
+      },
+      {
+        "name": "qwen2.5:14b",
+        "description": "Qwen 2.5 14B - Better reasoning, stronger instruction tuning, more consistent JSON (Powerful profile)",
+        "size": "9GB",
         "recommended": true
       },
       {
@@ -129,15 +138,9 @@
         "recommended": false
       },
       {
-        "name": "mistral:7b",
-        "description": "Mistral - Strong reasoning and tool usage",
-        "size": "4GB",
-        "recommended": false
-      },
-      {
-        "name": "gemma2:9b",
-        "description": "Gemma 2 - Google's efficient conversational model",
-        "size": "5GB",
+        "name": "phi3",
+        "description": "Phi 3 - Strongest all-around 3-4B class model for reasoning + structure",
+        "size": "2GB",
         "recommended": false
       }
     ],
@@ -159,45 +162,45 @@
   "profiles": {
     "default": {
       "name": "Balanced",
-      "description": "Best balance of speed, quality, and memory usage",
+      "description": "Best balance of speed, quality, and memory usage (M4 Max optimized)",
       "models": {
         "codeEditor": "qwen2.5-coder:7b",
-        "compressor": "qwen2.5-coder:7b",
+        "compressor": "llama3.1:8b",
         "general": "qwen2.5-coder:7b",
-        "classifier": "llama3.2:3b",
+        "classifier": "phi3",
         "embedding": "nomic-embed-text"
       }
     },
     "fast": {
       "name": "Fast",
-      "description": "Optimized for speed and low memory",
+      "description": "Optimized for speed and low memory - very low latency, good-enough intelligence",
       "models": {
         "codeEditor": "qwen2.5-coder:7b",
-        "compressor": "llama3.2:3b",
+        "compressor": "phi3",
         "general": "llama3.2:3b",
-        "classifier": "llama3.2:3b",
+        "classifier": "phi3",
         "embedding": "nomic-embed-text"
       }
     },
     "powerful": {
       "name": "Powerful",
-      "description": "Maximum quality, requires more memory",
+      "description": "Maximum quality, fully local - highest reasoning + coding quality",
       "models": {
         "codeEditor": "qwen2.5-coder:14b",
         "compressor": "llama3.1:8b",
-        "general": "mistral:7b",
-        "classifier": "llama3.2:3b",
+        "general": "qwen2.5:14b",
+        "classifier": "phi3",
         "embedding": "mxbai-embed-large"
       }
     },
     "minimal": {
       "name": "Minimal",
-      "description": "Lowest memory usage, fastest startup",
+      "description": "Lowest memory footprint - unified lightweight model",
       "models": {
-        "codeEditor": "phi3:3b",
-        "compressor": "phi3:3b",
-        "general": "phi3:3b",
-        "classifier": "phi3:3b",
+        "codeEditor": "phi3",
+        "compressor": "phi3",
+        "general": "phi3",
+        "classifier": "phi3",
         "embedding": "nomic-embed-text"
       }
     }
