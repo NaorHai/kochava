@@ -158,14 +158,21 @@ export class SemanticToolRouter {
    * Get lightweight tool descriptions for top-K relevant tools
    */
   async getRelevantToolDescriptions(query: string, topK: number = 10): Promise<string> {
+    // For direct skill invocations (e.g., /budget), skip tool injection
+    // The skill will be executed directly via tryDirectSkillExecution()
+    if (query.trim().startsWith('/')) {
+      return '';
+    }
+
     const relevantTools = await this.findRelevantTools(query, topK);
 
     if (relevantTools.length === 0) {
       return '';
     }
 
+    // Only inject highly relevant tools (>40% similarity)
     const descriptions = relevantTools
-      .filter(t => t.score >= 0.25) // Only include moderately relevant tools
+      .filter(t => t.score >= 0.40)
       .map(t => `- ${t.name}: ${t.description}`)
       .join('\n');
 

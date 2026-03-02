@@ -99,13 +99,30 @@ export class LocalExecutor {
       while (iterationCount < maxIterations) {
         iterationCount++;
 
+        // Dynamic token limits based on query complexity
+        const queryLength = prompt.length;
+        const isShortQuery = queryLength < 100;
+        const isSkillInvocation = prompt.trim().startsWith('/');
+
+        // Aggressive token limiting for fast responses
+        let numPredict: number;
+        if (isSkillInvocation || isShortQuery) {
+          numPredict = 256; // Very short for quick queries
+        } else if (target === 'local_code') {
+          numPredict = 1024; // Code needs more tokens
+        } else if (target === 'local_compress') {
+          numPredict = 512; // Summaries are concise
+        } else {
+          numPredict = 512; // General queries - reduced from 1024
+        }
+
         const response = await this.ollama.generate({
           model: modelName,
           prompt: fullPrompt,
           stream: false,
           options: {
             temperature: target === 'local_code' ? 0.2 : 0.3,
-            num_predict: target === 'local_code' ? 2048 : 1024, // Reduced for speed
+            num_predict: numPredict,
             num_ctx: 4096, // Limit context window for performance
           }
         });

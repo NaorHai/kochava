@@ -91,6 +91,8 @@ export class ToolExecutor {
     const possiblePaths = [
       // Try commands directory
       path.join(homedir(), '.claude', 'commands', `${skillName}.md`),
+      // Try skills directory (Claude Code v0.9+)
+      path.join(homedir(), '.claude', 'skills', skillName, 'skill.md'),
       // Try blueprints
       path.join(homedir(), '.claude', 'blueprints', 'sf-adlc', 'commands', `${skillName}.md`),
       // Try plugins
