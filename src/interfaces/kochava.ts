@@ -128,24 +128,70 @@ async function runInteractiveMode(forceModel?: string) {
     console.log(chalk.yellow(`Forcing ${modelType} for all requests\n`));
   }
 
-  console.log(chalk.gray('Ready to help with your coding questions. Type /help for commands or /exit to quit.\n'));
-
   // Suppress verbose logs for smooth conversation
   process.env.LOG_LEVEL = 'error';
 
-  const orchestrator = await initOrchestrator();
+  // Load skills and orchestrator in parallel with progress indicator
+  const startTime = Date.now();
+  process.stdout.write(chalk.gray('Loading...'));
 
-  // Load available skills for auto-complete
-  const availableSkills = await getAvailableSkills();
+  const [orchestrator, availableSkills] = await Promise.all([
+    initOrchestrator(),
+    getAvailableSkills()
+  ]);
+
+  const elapsed = Date.now() - startTime;
+  process.stdout.write('\r' + ' '.repeat(20) + '\r'); // Clear loading
+
+  if (availableSkills.length > 0) {
+    console.log(chalk.green(`✓ Ready! ${availableSkills.length} skills loaded (${elapsed}ms)`));
+    console.log(chalk.gray('  Press Tab to auto-complete • Type / to list skills • /help for commands\n'));
+  } else {
+    console.log(chalk.yellow(`⚠️  Ready but no skills found in ~/.claude/blueprints/`));
+    console.log(chalk.gray('  Type /help for commands or /exit to quit.\n'));
+  }
+
+  // All commands (skills + built-in)
+  const allCommands = [
+    ...availableSkills.map(s => `/${s}`),
+    '/help',
+    '/stats',
+    '/skills',
+    '/skill-stats',
+    '/reset',
+    '/exit',
+    '/quit'
+  ];
 
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
     prompt: chalk.magenta('kochava> '),
     completer: (line: string) => {
-      return completeSkills(line, availableSkills);
+      const trimmed = line.trim();
+
+      // If starts with /, complete commands/skills
+      if (trimmed.startsWith('/')) {
+        const hits = allCommands.filter(c => c.toLowerCase().startsWith(trimmed.toLowerCase()));
+
+        // If no matches, show all options
+        if (hits.length === 0) {
+          return [allCommands, trimmed];
+        }
+
+        // If partial match, show matching options
+        return [hits, trimmed];
+      }
+
+      // Not a command, no completion
+      return [[], line];
     }
   });
+
+  // Show startup tip
+  if (availableSkills.length > 0) {
+    console.log(chalk.dim(`💡 Tip: Try typing "/" and pressing Tab\n`));
+  }
 
   rl.prompt();
 
@@ -157,9 +203,9 @@ async function runInteractiveMode(forceModel?: string) {
       return;
     }
 
-    // Show skills if user just types "/"
-    if (input === '/') {
-      await showAvailableSkills();
+    // Show skills if user just types "/" or "/?"
+    if (input === '/' || input === '/?') {
+      displaySkillsList(availableSkills);
       rl.prompt();
       return;
     }
@@ -191,7 +237,7 @@ async function runInteractiveMode(forceModel?: string) {
     }
 
     if (input === '/skills' || input === 'skills') {
-      await showAvailableSkills();
+      displaySkillsList(availableSkills);
       rl.prompt();
       return;
     }
@@ -296,91 +342,140 @@ function displayMetrics(orchestrator: AIOrchestrator) {
   console.log();
 }
 
+async function findSkillsInPlugins(): Promise<string[]> {
+  const skills: string[] = [];
+
+  try {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    // Find all SKILL.md files
+    const { stdout } = await execAsync('find ~/.claude/plugins -name "SKILL.md" -type f 2>/dev/null');
+    const skillFiles = stdout.trim().split('\n').filter(Boolean);
+
+    for (const skillFile of skillFiles) {
+      try {
+        const content = await fs.readFile(skillFile, 'utf-8');
+        // Extract skill name from path or frontmatter
+        const nameMatch = content.match(/^name:\s*(.+)$/m);
+        if (nameMatch) {
+          skills.push(nameMatch[1].trim());
+        } else {
+          // Extract from directory name
+          const parts = skillFile.split('/');
+          const skillName = parts[parts.length - 2]; // Directory name
+          if (skillName && skillName !== 'skills') {
+            skills.push(skillName);
+          }
+        }
+      } catch (error) {
+        // Skip unreadable files
+      }
+    }
+  } catch (error) {
+    // find command failed, skip
+  }
+
+  return skills;
+}
+
 async function getAvailableSkills(): Promise<string[]> {
+  const skills: string[] = [];
+
+  // 1. Load from blueprints (ADLC skills)
   try {
     const skillsPath = path.join(process.env.HOME || '', '.claude/blueprints/sf-adlc/skills.json');
     const skillsData = await fs.readFile(skillsPath, 'utf-8');
     const skillsConfig = JSON.parse(skillsData);
 
     if (skillsConfig.skills && Array.isArray(skillsConfig.skills)) {
-      return skillsConfig.skills
+      skills.push(...skillsConfig.skills
         .filter((s: any) => s.name)
-        .map((s: any) => s.name);
+        .map((s: any) => s.name));
     }
   } catch (error) {
-    // No skills available
+    // No ADLC skills
   }
 
-  return [];
+  // 2. Load from commands directory
+  try {
+    const commandsPath = path.join(process.env.HOME || '', '.claude/commands');
+    const files = await fs.readdir(commandsPath);
+    const mdFiles = files.filter(f => f.endsWith('.md')).map(f => f.replace('.md', ''));
+    skills.push(...mdFiles);
+  } catch (error) {
+    // No commands
+  }
+
+  // 3. Load from plugin skills
+  const pluginSkills = await findSkillsInPlugins();
+  skills.push(...pluginSkills);
+
+  // Remove duplicates and sort
+  return [...new Set(skills)].sort();
 }
 
-function completeSkills(line: string, skills: string[]): [string[], string] {
-  // If line starts with /, complete skill names
-  if (line.startsWith('/')) {
-    const partial = line.slice(1).toLowerCase();
-    const hits = skills.filter(s => s.toLowerCase().startsWith(partial));
-    return [hits.map(h => `/${h}`), line];
-  }
-
-  // Also complete built-in commands
-  const builtinCommands = ['/help', '/stats', '/reset', '/exit', '/skills'];
-  if (line.startsWith('/')) {
-    const partial = line.toLowerCase();
-    const hits = builtinCommands.filter(c => c.startsWith(partial));
-    return [hits, line];
-  }
-
-  return [[], line];
-}
-
-async function showAvailableSkills() {
-  const skills = await getAvailableSkills();
-
+function displaySkillsList(skills: string[]) {
   if (skills.length === 0) {
-    console.log(chalk.yellow('\n⚠️  No skills found in ~/.claude/blueprints/sf-adlc/skills.json\n'));
+    console.log(chalk.yellow('\n⚠️  No skills found\n'));
     return;
   }
 
-  console.log(chalk.magenta.bold('\n🔧 Available Skills\n'));
+  console.log(chalk.cyan.bold('\n🔧 Available Skills\n'));
 
   // Group skills by category
   const adlcSkills = skills.filter(s => s.startsWith('adlc-'));
   const otherSkills = skills.filter(s => !s.startsWith('adlc-'));
 
   if (adlcSkills.length > 0) {
-    console.log(chalk.cyan('ADLC Workflow:'));
-    adlcSkills.forEach(skill => {
-      console.log(chalk.white(`  /${skill}`));
-    });
+    console.log(chalk.magenta('ADLC Workflow:'));
+    const cols = 2;
+    for (let i = 0; i < adlcSkills.length; i += cols) {
+      const row = adlcSkills.slice(i, i + cols);
+      console.log(chalk.white('  ' + row.map(s => `/${s.padEnd(30)}`).join('')));
+    }
     console.log();
   }
 
   if (otherSkills.length > 0) {
-    console.log(chalk.cyan('Other:'));
-    otherSkills.forEach(skill => {
-      console.log(chalk.white(`  /${skill}`));
-    });
+    console.log(chalk.magenta('Other Skills:'));
+    const cols = 3;
+    for (let i = 0; i < otherSkills.length; i += cols) {
+      const row = otherSkills.slice(i, i + cols);
+      console.log(chalk.white('  ' + row.map(s => `/${s.padEnd(20)}`).join('')));
+    }
     console.log();
   }
 
-  console.log(chalk.gray('Type /skill-name to use a skill'));
-  console.log(chalk.gray('Tab to auto-complete skill names\n'));
+  console.log(chalk.gray('💡 Press Tab to auto-complete • Type / to list • /help for commands\n'));
 }
 
 function displayHelp() {
-  console.log(chalk.magenta.bold('\n📖 Kochava Commands\n'));
+  console.log(chalk.magenta.bold('\n📖 Kochava Help\n'));
+
+  console.log(chalk.cyan('Commands:'));
   console.log(chalk.white('  /stats        - Show usage statistics'));
-  console.log(chalk.white('  /skills       - List available skills'));
-  console.log(chalk.white('  /skill-stats  - Show which skills work locally vs need Claude'));
+  console.log(chalk.white('  /skills       - List all available skills'));
+  console.log(chalk.white('  /skill-stats  - See which skills work locally vs need Claude'));
   console.log(chalk.white('  /reset        - Reset session and clear history'));
   console.log(chalk.white('  /help         - Show this help message'));
   console.log(chalk.white('  /exit         - Exit kochava'));
-  console.log(chalk.gray('\nSkills:'));
-  console.log(chalk.white('  /              - Show all skills'));
-  console.log(chalk.white('  /skill-name [args]  - Execute a skill (Tab to auto-complete)'));
-  console.log(chalk.gray('\nOptions:'));
-  console.log(chalk.white('  -m, --model <type>  Force model (local or claude)'));
-  console.log(chalk.white('  -v, --verbose       Enable verbose output'));
+
+  console.log(chalk.cyan('\nSkills:'));
+  console.log(chalk.white('  /                    - Show all available skills'));
+  console.log(chalk.white('  /skill-name [args]   - Execute a skill'));
+  console.log(chalk.dim('  Examples: /simplify, /adlc-architect W-12345'));
+
+  console.log(chalk.cyan('\nAuto-Complete:'));
+  console.log(chalk.white('  Type / and press Tab  - See all commands/skills'));
+  console.log(chalk.white('  Type /adlc- and Tab   - See ADLC skills'));
+  console.log(chalk.white('  Type /sim and Tab     - Complete to /simplify'));
+
+  console.log(chalk.cyan('\nCommand Line Options:'));
+  console.log(chalk.white('  -m, --model <type>   - Force model (local or claude)'));
+  console.log(chalk.white('  -v, --verbose        - Enable verbose output'));
+
   console.log(chalk.gray('\nPress Ctrl+C to exit at any time'));
   console.log();
 }
