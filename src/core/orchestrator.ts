@@ -41,9 +41,12 @@ export class AIOrchestrator {
     this.modelConfig = modelConfig;
 
     this.router = new TaskRouter(routingConfig, modelConfig);
+
+    const enableTools = process.env.ENABLE_LOCAL_TOOLS !== 'false';
     this.localExecutor = new LocalExecutor(
       modelConfig.models.codeEditor.name,
-      modelConfig.models.compressor.name
+      modelConfig.models.compressor.name,
+      enableTools
     );
 
     const tokenBudget = parseInt(process.env.CLAUDE_TOKEN_BUDGET || '8000', 10);
@@ -80,6 +83,9 @@ export class AIOrchestrator {
     } catch (error) {
       // Indexer handles logging internally
     }
+
+    // Initialize local executor with tool support
+    await this.localExecutor.initialize();
 
     logger.debug('AI Orchestrator initialized');
   }

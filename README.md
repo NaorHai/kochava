@@ -31,6 +31,7 @@
 - 🚀 **Auto Fallback** - Switches to local when Claude credits exhausted
 - 🎯 **Skill Auto-Complete** - Simple skills (format, lint, explain) run locally automatically
 - ☁️ **Bedrock Support** - Works with AWS Bedrock and enterprise gateways
+- 🔧 **Tool Integration** - Local models can use Claude Code skills and MCPs
 
 ## Quick Start
 
@@ -119,6 +120,30 @@ AUTO_FALLBACK_ENABLED=true
 ```
 
 **Note**: Setup script auto-extracts API key and Bedrock URL from `~/.claude/settings.json` if available.
+
+### Tool Integration (Skills & MCPs)
+
+Enable local models to use your Claude Code skills and MCPs:
+
+```bash
+ENABLE_LOCAL_TOOLS=true  # Default: true
+```
+
+When enabled, local models can:
+- Use Claude Code skills (like /adlc-architect, /simplify)
+- Access MCP tools (Slack, GitHub, Confluence, GUS)
+- Execute multi-step workflows locally
+
+**Example**:
+```bash
+kochava "search slack for architecture decisions"  # Uses slack_search_public
+kochava "find GUS work item W-12345"                # Uses query_gus_records
+```
+
+**Requirements**:
+- Claude Code installed with configured skills/MCPs
+- Skills defined in `~/.claude/blueprints/sf-adlc/skills.json`
+- MCP servers in `~/.claude/blueprints/sf-adlc/mcp-servers.json`
 
 ## Statistics
 

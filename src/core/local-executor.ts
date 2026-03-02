@@ -1,20 +1,45 @@
 import { Ollama } from 'ollama';
 import { ModelResponse, RouteTarget } from '../types/index.js';
 import logger from '../utils/logger.js';
+import { ToolDiscovery, ToolCatalog } from './tool-discovery.js';
+import { ToolExecutor, ToolExecutionResult } from './tool-executor.js';
 
 export class LocalExecutor {
   private ollama: Ollama;
   private modelMap: Map<RouteTarget, string>;
+  private toolDiscovery: ToolDiscovery;
+  private toolExecutor: ToolExecutor;
+  private toolsEnabled: boolean;
+  private toolCatalog?: ToolCatalog;
 
   constructor(
     codeModelName: string,
-    compressModelName: string
+    compressModelName: string,
+    enableTools: boolean = true
   ) {
     this.ollama = new Ollama({ host: process.env.OLLAMA_HOST || 'http://localhost:11434' });
     this.modelMap = new Map([
       ['local_code', codeModelName],
       ['local_compress', compressModelName]
     ]);
+    this.toolDiscovery = new ToolDiscovery();
+    this.toolExecutor = new ToolExecutor();
+    this.toolsEnabled = enableTools;
+  }
+
+  async initialize(): Promise<void> {
+    if (this.toolsEnabled) {
+      try {
+        this.toolCatalog = await this.toolDiscovery.discoverTools();
+        logger.debug('Tools enabled for local execution', {
+          skills: this.toolCatalog.skills.length,
+          mcpTools: this.toolCatalog.mcpTools.length
+        });
+      } catch (error) {
+        logger.debug('Tool discovery failed, continuing without tools', { error });
+        this.toolsEnabled = false;
+      }
+    }
   }
 
   async execute(
@@ -34,19 +59,52 @@ export class LocalExecutor {
     const startTime = Date.now();
 
     try {
-      const fullPrompt = context
-        ? `Context:\n${context}\n\nTask:\n${prompt}`
-        : prompt;
+      // Build prompt with tool awareness
+      let fullPrompt = this.buildPromptWithTools(prompt, context);
 
-      const response = await this.ollama.generate({
-        model: modelName,
-        prompt: fullPrompt,
-        stream: false,
-        options: {
-          temperature: target === 'local_code' ? 0.2 : 0.3,
-          num_predict: target === 'local_code' ? 4096 : 2048,
+      // Execute with tool loop (max 3 tool calls)
+      let finalResponse = '';
+      let totalTokens = 0;
+      let iterationCount = 0;
+      const maxIterations = 3;
+
+      while (iterationCount < maxIterations) {
+        iterationCount++;
+
+        const response = await this.ollama.generate({
+          model: modelName,
+          prompt: fullPrompt,
+          stream: false,
+          options: {
+            temperature: target === 'local_code' ? 0.2 : 0.3,
+            num_predict: target === 'local_code' ? 4096 : 2048,
+          }
+        });
+
+        totalTokens += response.eval_count || 0;
+        const responseText = response.response;
+
+        // Check if model wants to use a tool
+        const toolCall = this.toolExecutor.parseToolCall(responseText);
+
+        if (!toolCall || !this.toolsEnabled) {
+          // No tool use, we're done
+          finalResponse = responseText;
+          break;
         }
-      });
+
+        // Execute the tool
+        const toolResult = await this.executeToolCall(toolCall.tool, toolCall.params);
+
+        // Add tool result to context for next iteration
+        fullPrompt = `${fullPrompt}\n\nAssistant: ${responseText}\n\n${this.toolExecutor.formatToolResult(toolCall.tool, toolResult)}\n\nContinue your response:`;
+
+        // If last iteration, include final response
+        if (iterationCount === maxIterations) {
+          finalResponse = responseText + '\n\n' + toolResult.output;
+          break;
+        }
+      }
 
       const latency = Date.now() - startTime;
 
@@ -54,19 +112,71 @@ export class LocalExecutor {
         model: modelName,
         target,
         latency,
-        responseLength: response.response.length
+        iterations: iterationCount,
+        responseLength: finalResponse.length
       });
 
       return {
-        content: response.response,
+        content: finalResponse,
         model: modelName,
-        tokens: response.eval_count || 0,
+        tokens: totalTokens,
         latency
       };
     } catch (error) {
       logger.error('Local execution failed', { error, model: modelName });
       throw error;
     }
+  }
+
+  private buildPromptWithTools(prompt: string, context?: string): string {
+    let fullPrompt = '';
+
+    // Add tools if available
+    if (this.toolsEnabled && this.toolCatalog) {
+      const toolsSection = this.toolDiscovery.formatToolsForPrompt(this.toolCatalog);
+      fullPrompt += toolsSection;
+    }
+
+    // Add context
+    if (context) {
+      fullPrompt += `\nContext:\n${context}\n`;
+    }
+
+    // Add user prompt
+    fullPrompt += `\nTask:\n${prompt}\n`;
+
+    return fullPrompt;
+  }
+
+  private async executeToolCall(tool: string, params: Record<string, any>): Promise<ToolExecutionResult> {
+    if (!this.toolCatalog) {
+      return {
+        success: false,
+        output: '',
+        error: 'Tools not available'
+      };
+    }
+
+    // Check if it's a skill
+    const skill = this.toolCatalog.skills.find(s => s.name === tool);
+    if (skill) {
+      const args = Object.entries(params)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(' ');
+      return await this.toolExecutor.executeSkill(skill, args);
+    }
+
+    // Check if it's an MCP tool
+    const mcpTool = this.toolCatalog.mcpTools.find(t => t.name === tool);
+    if (mcpTool) {
+      return await this.toolExecutor.executeMCPTool(mcpTool, params);
+    }
+
+    return {
+      success: false,
+      output: '',
+      error: `Unknown tool: ${tool}`
+    };
   }
 
   async isModelAvailable(modelName: string): Promise<boolean> {
