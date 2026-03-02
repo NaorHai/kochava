@@ -6,6 +6,7 @@ import { ContextOptimizer } from './context_optimizer.js';
 import { MemoryManager } from './memory-manager.js';
 import { EscalationManager } from './escalation.js';
 import { RateLimitCache } from './rate-limit-cache.js';
+import { MetricsManager } from './metrics-manager.js';
 import { CodeIndexer } from '../retrieval/indexer.js';
 import { Embedder } from '../retrieval/embedder.js';
 import { SkillTracker } from './skill-tracker.js';
@@ -35,11 +36,11 @@ export class AIOrchestrator {
   private memoryManager: MemoryManager;
   private escalationManager: EscalationManager;
   private rateLimitCache: RateLimitCache;
+  private metricsManager: MetricsManager;
   private indexer?: CodeIndexer;
   private skillTracker: SkillTracker;
   private routingConfig: RoutingConfig;
   private modelConfig: ModelConfig;
-  private metrics: UsageMetrics;
 
   constructor(routingConfig: RoutingConfig, modelConfig: ModelConfig, claudeApiKey: string, bedrockBaseURL?: string, sessionId?: string) {
     this.routingConfig = routingConfig;
@@ -76,14 +77,8 @@ export class AIOrchestrator {
     const rateLimitHours = parseInt(process.env.RATE_LIMIT_CACHE_HOURS || '4', 10);
     this.rateLimitCache = new RateLimitCache(rateLimitHours);
 
-    this.metrics = {
-      totalRequests: 0,
-      localRequests: 0,
-      claudeRequests: 0,
-      tokensSaved: 0,
-      claudeTokensUsed: 0,
-      avgLatency: 0
-    };
+    // Metrics manager with persistence
+    this.metricsManager = new MetricsManager();
   }
 
   async initialize(): Promise<void> {
@@ -106,6 +101,9 @@ export class AIOrchestrator {
 
     // Load rate limit cache
     await this.rateLimitCache.load();
+
+    // Load metrics
+    await this.metricsManager.load();
 
     // Initialize memory manager and load session if exists
     await this.memoryManager.initialize();
@@ -135,7 +133,6 @@ export class AIOrchestrator {
 
   async process(input: string, codeContext?: string, forceModel?: string): Promise<ModelResponse> {
     const startTime = Date.now();
-    this.metrics.totalRequests++;
 
     this.memoryManager.addTurn('user', input);
 
@@ -187,8 +184,6 @@ export class AIOrchestrator {
     if (decision.target === 'claude') {
       try {
         response = await this.executeWithClaude(input, codeContext, context);
-        this.metrics.claudeRequests++;
-        this.metrics.claudeTokensUsed += response.tokens;
       } catch (error: any) {
         // Check if it's a rate limit error
         if (this.isRateLimitError(error)) {
@@ -200,10 +195,6 @@ export class AIOrchestrator {
       // Use the router's decision (already chose local_code/local_compress/local_general based on tool requirements)
       const formattedHistory = this.formatHistoryForLocal(context.history);
       response = await this.executeLocally(decision.target, input, codeContext, formattedHistory);
-      this.metrics.localRequests++;
-
-      const estimatedClaudeTokens = Math.ceil(response.tokens * 1.5);
-      this.metrics.tokensSaved += estimatedClaudeTokens;
     }
 
     this.memoryManager.addTurn('assistant', response.content);
@@ -212,9 +203,11 @@ export class AIOrchestrator {
     await this.memoryManager.saveSession();
 
     const totalLatency = Date.now() - startTime;
-    this.metrics.avgLatency =
-      (this.metrics.avgLatency * (this.metrics.totalRequests - 1) + totalLatency) /
-      this.metrics.totalRequests;
+
+    // Record metrics (persisted across sessions)
+    const isLocal = decision.target !== 'claude';
+    const tokensSaved = isLocal ? Math.ceil(response.tokens * 1.5) : 0;
+    await this.metricsManager.recordRequest(isLocal, response.tokens, totalLatency, tokensSaved);
 
     this.logRequest(decision, response, totalLatency);
 
@@ -252,10 +245,6 @@ export class AIOrchestrator {
     try {
       const formattedHistory = this.formatHistoryForLocal(context.history);
       const localResponse = await this.executeLocally(fallbackTarget, input, codeContext, formattedHistory);
-
-      this.metrics.localRequests++;
-      const estimatedClaudeTokens = Math.ceil(localResponse.tokens * 1.5);
-      this.metrics.tokensSaved += estimatedClaudeTokens;
 
       const fallbackNotice = this.formatFallbackNotice(errorMessage);
 
@@ -326,10 +315,6 @@ export class AIOrchestrator {
     return results
       .map(chunk => `// ${chunk.filePath}:${chunk.startLine}-${chunk.endLine}\n${chunk.content}`)
       .join('\n\n');
-  }
-
-  getMetrics(): UsageMetrics {
-    return { ...this.metrics };
   }
 
   getClaudeTokensUsed(): number {
@@ -432,6 +417,8 @@ export class AIOrchestrator {
     response: ModelResponse,
     latency: number
   ): void {
+    const stats = this.metricsManager.getStats();
+
     tokenLogger.info('Request processed', {
       target: decision.target,
       taskType: decision.taskType,
@@ -439,10 +426,24 @@ export class AIOrchestrator {
       model: response.model,
       tokens: response.tokens,
       latency,
-      totalRequests: this.metrics.totalRequests,
-      localRatio: this.metrics.localRequests / this.metrics.totalRequests,
-      tokensSaved: this.metrics.tokensSaved
+      totalRequests: stats.totalRequests,
+      localRatio: stats.localRatio,
+      tokensSaved: stats.tokensSaved
     });
+  }
+
+  /**
+   * Get metrics (for /stats command)
+   */
+  getMetrics(): UsageMetrics {
+    return this.metricsManager.getMetrics();
+  }
+
+  /**
+   * Get detailed stats (for display)
+   */
+  getDetailedStats() {
+    return this.metricsManager.getStats();
   }
 
   /**

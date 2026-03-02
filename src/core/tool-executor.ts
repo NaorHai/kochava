@@ -5,6 +5,7 @@ import { MCPTool, SkillDefinition } from './tool-discovery.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { homedir } from 'os';
+import yaml from 'js-yaml';
 
 const execAsync = promisify(exec);
 
@@ -30,7 +31,8 @@ export class ToolExecutor {
         logger.debug('Parsed skill metadata', {
           skill: skill.name,
           hasAllowedTools: !!metadata.allowedTools,
-          allowedTools: metadata.allowedTools
+          allowedTools: metadata.allowedTools,
+          contentPreview: skillContent.substring(0, 200)
         });
 
         if (metadata.allowedTools?.includes('Bash')) {
@@ -81,25 +83,51 @@ export class ToolExecutor {
   }
 
   /**
-   * Parse skill YAML frontmatter metadata
+   * Parse skill YAML frontmatter metadata using proper YAML parser
+   *
+   * Production-grade parser that handles:
+   * - All YAML syntax (lists, objects, strings, etc.)
+   * - Any frontmatter key (not just hard-coded ones)
+   * - Nested structures
+   * - Multiple naming conventions (kebab-case, camelCase)
    */
   private parseSkillMetadata(content: string): { allowedTools?: string[] } {
-    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!frontmatterMatch) {
+    try {
+      // Normalize line endings (handle both \r\n and \n)
+      const normalized = content.replace(/\r\n/g, '\n');
+
+      // Extract frontmatter
+      const frontmatterMatch = normalized.match(/^---\n([\s\S]*?)\n---/);
+      if (!frontmatterMatch) {
+        return {};
+      }
+
+      // Parse YAML using proper parser (production-grade, scalable)
+      const parsed: any = yaml.load(frontmatterMatch[1]);
+
+      if (!parsed || typeof parsed !== 'object') {
+        return {};
+      }
+
+      // Extract allowedTools, supporting both naming conventions
+      const allowedTools = parsed['allowed-tools'] || parsed['allowedTools'] || parsed['tools'];
+
+      if (allowedTools) {
+        // Normalize to array
+        const tools = Array.isArray(allowedTools) ? allowedTools : [allowedTools];
+
+        return {
+          allowedTools: tools.filter((t: any) => typeof t === 'string' && t.length > 0)
+        };
+      }
+
+      return {};
+    } catch (error: any) {
+      logger.debug('Failed to parse skill frontmatter', {
+        error: error.message
+      });
       return {};
     }
-
-    const metadata: any = {};
-    const lines = frontmatterMatch[1].split('\n');
-
-    for (const line of lines) {
-      if (line.includes('allowed-tools:')) {
-        const toolsStr = line.split(':')[1]?.trim();
-        metadata.allowedTools = toolsStr ? [toolsStr] : [];
-      }
-    }
-
-    return metadata;
   }
 
   /**
@@ -107,11 +135,14 @@ export class ToolExecutor {
    * Supports: ```bash, ```sh, ```shell
    */
   private extractBashCommands(content: string): string[] {
+    // Normalize line endings
+    const normalized = content.replace(/\r\n/g, '\n');
+
     const commands: string[] = [];
     const codeBlockRegex = /```(?:bash|sh|shell)\n([\s\S]*?)```/g;
 
     let match;
-    while ((match = codeBlockRegex.exec(content)) !== null) {
+    while ((match = codeBlockRegex.exec(normalized)) !== null) {
       const command = match[1].trim();
       if (command && !command.startsWith('#') && command.length > 0) {
         commands.push(command);
