@@ -2,15 +2,7 @@
 
 ## [1.4.0] - 2026-03-02
 
-### ⚡ 3-Tier Smart Routing (Major Feature)
-- **Ollama (Tier 1)**: Free local models for complexity 1-3
-- **Cursor (Tier 2)**: Licensed cloud models for complexity 4-7
-- **Claude (Tier 3)**: Premium API for complexity 8-10
-- **20-40% cost savings**: Use Cursor (already paid for) instead of Claude for medium queries
-- **Automatic fallback**: Ollama → Cursor → Claude on failure
-- **Smart escalation**: Based on complexity and confidence scores
-
-### 🛡️ Rate Limit Caching
+### 🛡️ Rate Limit Caching (Major Feature)
 - **Intelligent caching**: Remember which models hit rate limits
 - **Configurable duration**: Default 4 hours, set via `RATE_LIMIT_CACHE_HOURS`
 - **Auto-fallback**: Skip rate-limited models immediately (no wasted API calls)
@@ -25,12 +17,10 @@
 - **Interactive mode**: Prevent early exit when piping input
 
 ### 📊 Metrics Tracking
-- Track Cursor requests and tokens separately
 - Show rate-limited models in `/stats` output
-- Display 3-tier usage breakdown
+- Display detailed usage breakdown (local vs Claude)
 
 ### 📖 Documentation
-- **CURSOR_SETUP.md**: Complete guide for 3-tier routing setup
 - **Rate limit guide**: How to configure and monitor rate limits
 - **Troubleshooting**: Common issues and solutions
 
