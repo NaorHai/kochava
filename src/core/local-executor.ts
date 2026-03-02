@@ -84,7 +84,8 @@ export class LocalExecutor {
           stream: false,
           options: {
             temperature: target === 'local_code' ? 0.2 : 0.3,
-            num_predict: target === 'local_code' ? 4096 : 2048,
+            num_predict: target === 'local_code' ? 2048 : 1024, // Reduced for speed
+            num_ctx: 4096, // Limit context window for performance
           }
         });
 
@@ -159,8 +160,9 @@ export class LocalExecutor {
   private buildPromptWithTools(prompt: string, context?: string, history?: string): string {
     let fullPrompt = '';
 
-    // Add tools if available
-    if (this.toolsEnabled && this.toolCatalog) {
+    // Only add tools if the prompt seems tool-related (optimization)
+    const needsTools = this.promptNeedsTools(prompt);
+    if (needsTools && this.toolsEnabled && this.toolCatalog) {
       const toolsSection = this.toolDiscovery.formatToolsForPrompt(this.toolCatalog);
       fullPrompt += toolsSection;
     }
@@ -179,6 +181,26 @@ export class LocalExecutor {
     fullPrompt += `\nTask:\n${prompt}\n`;
 
     return fullPrompt;
+  }
+
+  private promptNeedsTools(prompt: string): boolean {
+    const lowerPrompt = prompt.toLowerCase();
+
+    // Check for tool-related keywords
+    const toolKeywords = [
+      'search', 'find', 'query', 'get', 'fetch', 'retrieve',
+      'slack', 'github', 'confluence', 'gus', 'cuala',
+      'w-', 'work item', 'pull request', 'pr', 'issue',
+      'test', 'execute', 'run', 'memory', 'save', 'remember'
+    ];
+
+    // Check for skill invocation
+    if (lowerPrompt.startsWith('/') || lowerPrompt.includes('adlc-')) {
+      return true;
+    }
+
+    // Check for tool keywords
+    return toolKeywords.some(keyword => lowerPrompt.includes(keyword));
   }
 
   private cleanToolArtifacts(text: string): string {
@@ -239,5 +261,16 @@ export class LocalExecutor {
       logger.error('Failed to check model availability', { error, modelName });
       return false;
     }
+  }
+
+  async getToolCounts(): Promise<{ skills: number; mcps: number }> {
+    if (!this.toolCatalog) {
+      return { skills: 0, mcps: 0 };
+    }
+
+    return {
+      skills: this.toolCatalog.skills.length,
+      mcps: this.toolCatalog.mcpTools.length
+    };
   }
 }

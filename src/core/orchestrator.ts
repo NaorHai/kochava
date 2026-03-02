@@ -117,6 +117,10 @@ export class AIOrchestrator {
     return await this.memoryManager.listRecentSessions();
   }
 
+  async getToolCounts(): Promise<{ skills: number; mcps: number }> {
+    return await this.localExecutor.getToolCounts();
+  }
+
   async process(input: string, codeContext?: string, forceModel?: string): Promise<ModelResponse> {
     const startTime = Date.now();
     this.metrics.totalRequests++;
@@ -127,7 +131,7 @@ export class AIOrchestrator {
       input,
       codeContext,
       fileCount: codeContext ? this.estimateFileCount(codeContext) : undefined,
-      history: this.memoryManager.getRecentHistory(2000)
+      history: this.memoryManager.getRecentHistory(500) // Reduced for faster local model responses
     };
 
     const decision = await this.router.route(context);

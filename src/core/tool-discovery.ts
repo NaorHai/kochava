@@ -243,42 +243,31 @@ export class ToolDiscovery {
   }
 
   formatToolsForPrompt(catalog: ToolCatalog): string {
-    let prompt = '\n\n# Available Tools\n\n';
+    let prompt = '\n# Available Tools (use ONLY if task requires them)\n\n';
 
-    // Add skills
+    // Add top 5 most relevant skills
     if (catalog.skills.length > 0) {
-      prompt += '## Skills (Workflows)\n\n';
-      for (const skill of catalog.skills.slice(0, 10)) { // Limit to 10 most common
-        prompt += `- **${skill.name}**: ${skill.description}\n`;
-        if (skill.argumentHint) {
-          prompt += `  Usage: /${skill.name} ${skill.argumentHint}\n`;
-        }
-      }
-      prompt += '\n';
+      prompt += 'Skills: ';
+      const topSkills = catalog.skills.slice(0, 5).map(s => s.name).join(', ');
+      prompt += topSkills + '\n';
     }
 
-    // Add MCP tools
+    // Add MCP tools grouped by server
     if (catalog.mcpTools.length > 0) {
-      prompt += '## External Tools (MCPs)\n\n';
-
-      // Group by server
-      const byServer: Record<string, MCPTool[]> = {};
+      const byServer: Record<string, string[]> = {};
       for (const tool of catalog.mcpTools) {
         if (!byServer[tool.server]) byServer[tool.server] = [];
-        byServer[tool.server].push(tool);
+        byServer[tool.server].push(tool.name);
       }
 
-      for (const [server, tools] of Object.entries(byServer)) {
-        prompt += `### ${server}\n`;
-        for (const tool of tools) {
-          prompt += `- **${tool.name}**: ${tool.description}\n`;
-        }
-        prompt += '\n';
-      }
+      prompt += 'MCPs: ';
+      const serverList = Object.entries(byServer)
+        .map(([server, tools]) => `${server}[${tools.slice(0, 3).join(',')}]`)
+        .join(', ');
+      prompt += serverList + '\n';
     }
 
-    prompt += `\n**Note**: To use a tool, respond with: TOOL_USE: <tool_name> <arguments>\n`;
-    prompt += `Example: TOOL_USE: slack_search_public query="architecture decisions"\n\n`;
+    prompt += '\nTo use: TOOL_USE: <tool_name> <args>\nOnly use if task EXPLICITLY needs external data/action.\n\n';
 
     return prompt;
   }

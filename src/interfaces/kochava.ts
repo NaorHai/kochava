@@ -153,14 +153,16 @@ async function runInteractiveMode(forceModel?: string, sessionId?: string) {
   ]);
 
   const currentSessionId = orchestrator.getSessionId();
+  const toolCounts = await orchestrator.getToolCounts();
   const elapsed = Date.now() - startTime;
   process.stdout.write('\r' + ' '.repeat(20) + '\r'); // Clear loading
 
-  if (availableSkills.length > 0) {
-    console.log(chalk.green(`✓ Ready! ${availableSkills.length} skills loaded (${elapsed}ms)`));
+  const totalTools = toolCounts.skills + toolCounts.mcps;
+  if (totalTools > 0) {
+    console.log(chalk.green(`✓ Ready! ${toolCounts.skills} skills + ${toolCounts.mcps} MCPs loaded (${elapsed}ms)`));
     console.log(chalk.gray('  Press Tab to auto-complete • Type / to list skills • /help for commands\n'));
   } else {
-    console.log(chalk.yellow(`⚠️  Ready but no skills found in ~/.claude/blueprints/`));
+    console.log(chalk.yellow(`⚠️  Ready but no tools found in ~/.claude/`));
     console.log(chalk.gray('  Type /help for commands or /exit to quit.\n'));
   }
 
