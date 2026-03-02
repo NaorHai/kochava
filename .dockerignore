@@ -1,0 +1,39 @@
+# Node
+node_modules
+npm-debug.log
+dist
+
+# Environment
+.env
+.env.local
+
+# Logs
+logs
+*.log
+
+# Models and embeddings (managed by Ollama)
+models
+embeddings
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed in container)
+*.md
+*.txt
+!package*.json
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore

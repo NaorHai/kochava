@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  # Ollama service - runs local models
+  ollama:
+    image: ollama/ollama:latest
+    container_name: kochava-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Kochava application
+  kochava:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kochava-app
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-none}
+      - CLAUDE_TOKEN_BUDGET=${CLAUDE_TOKEN_BUDGET:-8000}
+      - AUTO_FALLBACK_ENABLED=${AUTO_FALLBACK_ENABLED:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ./logs:/app/logs
+      - ./embeddings:/app/embeddings
+      - ./.env:/app/.env:ro
+    ports:
+      - "3000:3000"  # HTTP server
+      - "3001:3001"  # Plugin server
+    command: node dist/interfaces/kochava.js --help
+    restart: unless-stopped
+
+  # Kochava HTTP Server
+  kochava-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kochava-server
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-none}
+      - CLAUDE_TOKEN_BUDGET=${CLAUDE_TOKEN_BUDGET:-8000}
+      - SERVER_PORT=3000
+    volumes:
+      - ./logs:/app/logs
+      - ./embeddings:/app/embeddings
+      - ./.env:/app/.env:ro
+    ports:
+      - "3000:3000"
+    command: node dist/interfaces/server.js
+    restart: unless-stopped
+    profiles:
+      - server
+
+  # Kochava Claude Plugin
+  kochava-plugin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kochava-plugin
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-none}
+      - CLAUDE_TOKEN_BUDGET=${CLAUDE_TOKEN_BUDGET:-8000}
+      - PLUGIN_PORT=3001
+    volumes:
+      - ./logs:/app/logs
+      - ./embeddings:/app/embeddings
+      - ./.env:/app/.env:ro
+    ports:
+      - "3001:3001"
+    command: node dist/interfaces/plugin_adapter.js
+    restart: unless-stopped
+    profiles:
+      - plugin
+
+volumes:
+  ollama-data:
+    name: kochava-ollama-data
+
+networks:
+  default:
+    name: kochava-network
