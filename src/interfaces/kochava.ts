@@ -213,42 +213,50 @@ async function runInteractiveMode(forceModel?: string, sessionId?: string) {
       menuActive = true;
       // User just typed "/", show interactive menu
       setTimeout(async () => {
-        // Clear the "/" from the line
-        (this as any).line = '';
-        (this as any).cursor = 0;
-        (this as any)._refreshLine();
-
-        // Show interactive menu
-        const selected = await showSkillMenu(allCommands);
-        menuActive = false;
-
-        if (selected) {
-          // User selected something
+        try {
+          // Clear the "/" from the line
           (this as any).line = '';
           (this as any).cursor = 0;
+          (this as any)._refreshLine();
 
-          // Auto-submit if it's a complete command
-          if (selected.startsWith('/')) {
-            // Check if it's a built-in command (no execution indicator needed)
-            const builtinCommands = ['/help', '/stats', '/skills', '/skill-stats', '/reset', '/exit', '/quit', '/', '/?'];
-            const isBuiltin = builtinCommands.includes(selected);
+          // Show interactive menu
+          const selected = await showSkillMenu(allCommands);
 
-            if (!isBuiltin) {
-              // Show that we're executing the skill
-              console.log(chalk.magenta(`\n→ ${selected}...\n`));
+          if (selected) {
+            // User selected something
+            (this as any).line = '';
+            (this as any).cursor = 0;
+
+            // Auto-submit if it's a complete command
+            if (selected.startsWith('/')) {
+              // Check if it's a built-in command (no execution indicator needed)
+              const builtinCommands = ['/help', '/stats', '/skills', '/skill-stats', '/reset', '/exit', '/quit', '/', '/?'];
+              const isBuiltin = builtinCommands.includes(selected);
+
+              if (!isBuiltin) {
+                // Show that we're executing the skill
+                console.log(chalk.magenta(`\n→ ${selected}...\n`));
+              }
+
+              // Emit the line event - the async handler will process it and call prompt() when done
+              (this as any).emit('line', selected);
+            } else {
+              // Not a command, just insert it
+              (this as any).line = selected;
+              (this as any).cursor = selected.length;
+              (this as any)._refreshLine();
             }
-
-            // Emit the line event - the async handler will process it and call prompt() when done
-            (this as any).emit('line', selected);
           } else {
-            // Not a command, just insert it
-            (this as any).line = selected;
-            (this as any).cursor = selected.length;
-            (this as any)._refreshLine();
+            // User cancelled, restore prompt
+            (this as any).prompt();
           }
-        } else {
-          // User cancelled, restore prompt
+        } catch (error) {
+          // Menu error, restore prompt
+          console.error(chalk.red('Menu error, please try again'));
           (this as any).prompt();
+        } finally {
+          // Always reset menu flag
+          menuActive = false;
         }
       }, 10);
     }

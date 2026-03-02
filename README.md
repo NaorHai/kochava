@@ -54,17 +54,21 @@ Choose: **1) Docker** (recommended) or **2) Local**
 Then use from anywhere:
 
 ```bash
-kochava                  # Start interactive conversation (default)
-kochava "your question"  # Single query mode
-kochava --stats          # Show statistics
+kochava                      # Start interactive conversation (default)
+kochava "your question"      # Single query mode
+kochava --stats              # Show statistics
+kochava --sessions           # List recent sessions
+kochava --session <id>       # Resume previous session
 kochava --file code.ts "explain this"
-kochava --model local    # Force local models only
-kochava --model claude   # Force Claude API
+kochava --model local        # Force local models only
+kochava --model claude       # Force Claude API
 
 # Interactive mode features:
 # - Type "/" for arrow-navigable skill menu
-# - Type to filter, ↑↓ to navigate, Enter to select
+# - Type to filter, ↑↓ to navigate, Enter to select, Esc to cancel
 # - Auto-complete with Tab
+# - Sessions auto-saved (last 3 kept)
+# - Context preserved across both local and Claude models
 ```
 
 ### Docker Mode
@@ -134,21 +138,27 @@ Enable local models to use your Claude Code skills and MCPs:
 ENABLE_LOCAL_TOOLS=true  # Default: true
 ```
 
-When enabled, local models can:
+When enabled, **both local and Claude models** can:
 - Use Claude Code skills (like /adlc-architect, /simplify)
-- Access MCP tools (Slack, GitHub, Confluence, GUS)
-- Execute multi-step workflows locally
+- Access MCP tools (Slack, GitHub, Confluence, GUS, CUALA, claude-mem)
+- Execute multi-step workflows with tool integration
 
 **Example**:
 ```bash
 kochava "search slack for architecture decisions"  # Uses slack_search_public
 kochava "find GUS work item W-12345"                # Uses query_gus_records
+kochava "execute CUALA test for login flow"        # Uses cuala_execute_scenario
 ```
 
-**Requirements**:
-- Claude Code installed with configured skills/MCPs
-- Skills defined in `~/.claude/blueprints/sf-adlc/skills.json`
-- MCP servers in `~/.claude/blueprints/sf-adlc/mcp-servers.json`
+**Auto-Discovery Sources**:
+Kochava automatically discovers tools from:
+- `~/.claude/settings.json` (global MCP servers)
+- `~/.claude/blueprints/sf-adlc/skills.json` (blueprint skills)
+- `~/.claude/blueprints/sf-adlc/mcp-servers.json` (blueprint MCPs)
+- `~/.claude/commands/*.md` (command files)
+- `~/.claude/plugins/**/SKILL.md` (plugin skills)
+
+**Note**: MCPs are available to all models, not just Claude!
 
 ## Statistics
 
