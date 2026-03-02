@@ -554,30 +554,14 @@ function displaySkillsList(skills: string[]) {
 
   console.log(chalk.cyan.bold('\n🔧 Available Skills\n'));
 
-  // Group skills by category
-  const adlcSkills = skills.filter(s => s.startsWith('adlc-'));
-  const otherSkills = skills.filter(s => !s.startsWith('adlc-'));
-
-  if (adlcSkills.length > 0) {
-    console.log(chalk.magenta('ADLC Workflow:'));
-    const cols = 2;
-    for (let i = 0; i < adlcSkills.length; i += cols) {
-      const row = adlcSkills.slice(i, i + cols);
-      console.log(chalk.white('  ' + row.map(s => `/${s.padEnd(30)}`).join('')));
-    }
-    console.log();
+  // Display all skills in columns (no grouping)
+  const cols = 3;
+  for (let i = 0; i < skills.length; i += cols) {
+    const row = skills.slice(i, i + cols);
+    console.log(chalk.white('  ' + row.map(s => `/${s.padEnd(25)}`).join('')));
   }
 
-  if (otherSkills.length > 0) {
-    console.log(chalk.magenta('Other Skills:'));
-    const cols = 3;
-    for (let i = 0; i < otherSkills.length; i += cols) {
-      const row = otherSkills.slice(i, i + cols);
-      console.log(chalk.white('  ' + row.map(s => `/${s.padEnd(20)}`).join('')));
-    }
-    console.log();
-  }
-
+  console.log();
   console.log(chalk.gray('💡 Press Tab to auto-complete • Type / to list • /help for commands\n'));
 }
 
@@ -600,11 +584,11 @@ function displayHelp() {
   console.log(chalk.cyan('\nSkills:'));
   console.log(chalk.white('  /                    - Show all available skills'));
   console.log(chalk.white('  /skill-name [args]   - Execute a skill'));
-  console.log(chalk.dim('  Examples: /simplify, /adlc-architect W-12345'));
+  console.log(chalk.dim('  Examples: /simplify, /budget, /commit'));
 
   console.log(chalk.cyan('\nAuto-Complete:'));
   console.log(chalk.white('  Type / and press Tab  - See all commands/skills'));
-  console.log(chalk.white('  Type /adlc- and Tab   - See ADLC skills'));
+  console.log(chalk.white('  Type /bud and Tab     - Complete to /budget'));
   console.log(chalk.white('  Type /sim and Tab     - Complete to /simplify'));
 
   console.log(chalk.cyan('\nCommand Line Options:'));

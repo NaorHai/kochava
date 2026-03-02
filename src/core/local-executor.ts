@@ -66,6 +66,21 @@ export class LocalExecutor {
     const startTime = Date.now();
 
     try {
+      // Check if this is a direct skill invocation (e.g., "/budget", "/skill-name args")
+      const directSkillResult = await this.tryDirectSkillExecution(prompt);
+      if (directSkillResult) {
+        logger.info('Direct skill execution completed', {
+          prompt: prompt.split(' ')[0],
+          latency: Date.now() - startTime
+        });
+        return {
+          content: directSkillResult.output,
+          model: `${modelName} (direct-skill)`,
+          tokens: 0,
+          latency: Date.now() - startTime
+        };
+      }
+
       // Build prompt with tool awareness and conversation history
       let fullPrompt = this.buildPromptWithTools(prompt, context, history);
 
@@ -183,6 +198,56 @@ export class LocalExecutor {
     return fullPrompt;
   }
 
+  private async tryDirectSkillExecution(prompt: string): Promise<{ output: string } | null> {
+    if (!this.toolsEnabled || !this.toolCatalog) {
+      return null;
+    }
+
+    // Check if prompt is a direct skill invocation (e.g., "/budget", "/skill-name args")
+    const trimmed = prompt.trim();
+    if (!trimmed.startsWith('/')) {
+      return null;
+    }
+
+    // Parse skill name and args
+    const parts = trimmed.substring(1).split(/\s+/);
+    const skillName = parts[0];
+    const args = parts.slice(1).join(' ');
+
+    // Find skill in catalog
+    const skill = this.toolCatalog.skills.find(s => s.name === skillName);
+    if (!skill) {
+      // Skill not found, return helpful message
+      logger.debug('Skill not found in catalog', { skillName });
+      return {
+        output: `Skill '/${skillName}' not found. Use '/' to see available skills, or try 'kochava --sessions' to list recent sessions.`
+      };
+    }
+
+    logger.debug('Direct skill execution', { skill: skillName, args });
+
+    // Execute the skill
+    const result = await this.executeToolCall(skillName, { args });
+
+    if (result.success) {
+      // Track success
+      if (this.skillTracker) {
+        this.skillTracker.recordLocalSuccess(skillName);
+      }
+      return { output: result.output };
+    }
+
+    // Track failure
+    if (this.skillTracker) {
+      this.skillTracker.recordLocalFailure(skillName);
+    }
+
+    // Return error message
+    return {
+      output: result.error || `Failed to execute skill '/${skillName}'. The skill may not be properly configured.`
+    };
+  }
+
   private promptNeedsTools(prompt: string): boolean {
     const lowerPrompt = prompt.toLowerCase();
 
@@ -194,9 +259,9 @@ export class LocalExecutor {
       'test', 'execute', 'run', 'memory', 'save', 'remember'
     ];
 
-    // Check for skill invocation
-    if (lowerPrompt.startsWith('/') || lowerPrompt.includes('adlc-')) {
-      return true;
+    // Don't include tools for direct skill invocations (handled separately)
+    if (lowerPrompt.startsWith('/')) {
+      return false;
     }
 
     // Check for tool keywords
