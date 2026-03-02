@@ -71,6 +71,31 @@ export interface ModelConfig {
     embedding: ModelDef;
   };
   downloadOrder: string[];
+  availableModels?: {
+    codeEditors: ModelOption[];
+    compressors: ModelOption[];
+    classifiers: ModelOption[];
+    embeddings: ModelOption[];
+  };
+  profiles?: Record<string, ModelProfile>;
+}
+
+export interface ModelOption {
+  name: string;
+  description: string;
+  size: string;
+  recommended: boolean;
+}
+
+export interface ModelProfile {
+  name: string;
+  description: string;
+  models: {
+    codeEditor: string;
+    compressor: string;
+    classifier: string;
+    embedding: string;
+  };
 }
 
 export interface ModelDef {

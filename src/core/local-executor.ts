@@ -67,16 +67,12 @@ export class LocalExecutor {
 
     try {
       // Check if this is a direct skill invocation (e.g., "/budget", "/skill-name args")
-      const directSkillResult = await this.tryDirectSkillExecution(prompt);
+      const directSkillResult = await this.tryDirectSkillExecution(prompt, context, history);
       if (directSkillResult) {
-        logger.info('Direct skill execution completed', {
-          prompt: prompt.split(' ')[0],
-          latency: Date.now() - startTime
-        });
         return {
           content: directSkillResult.output,
-          model: `${modelName} (direct-skill)`,
-          tokens: 0,
+          model: `${modelName} (skill)`,
+          tokens: directSkillResult.tokens || 0,
           latency: Date.now() - startTime
         };
       }
@@ -198,7 +194,7 @@ export class LocalExecutor {
     return fullPrompt;
   }
 
-  private async tryDirectSkillExecution(prompt: string): Promise<{ output: string } | null> {
+  private async tryDirectSkillExecution(prompt: string, context?: string, history?: string): Promise<{ output: string; tokens?: number } | null> {
     if (!this.toolsEnabled || !this.toolCatalog) {
       return null;
     }
@@ -229,8 +225,71 @@ export class LocalExecutor {
     // Execute the skill
     const result = await this.executeToolCall(skillName, { args });
 
-    if (result.success) {
-      // Track success
+    if (result.success && result.isSkillInstructions) {
+      // We got skill instructions - run them through the model
+      logger.debug('Executing skill instructions through model', { skill: skillName });
+
+      const modelName = this.modelMap.get('local_code');
+      if (!modelName) {
+        return {
+          output: 'Model not configured'
+        };
+      }
+
+      // Build prompt with skill instructions
+      let skillPrompt = result.output; // The skill's .md content
+
+      // Add context if provided
+      if (context) {
+        skillPrompt += `\n\nContext:\n${context}\n`;
+      }
+
+      // Add user's args if provided
+      if (args) {
+        skillPrompt += `\n\nUser Input: ${args}\n`;
+      }
+
+      // Add history for context
+      if (history) {
+        skillPrompt += `\n\nConversation History:\n${history}\n`;
+      }
+
+      // Execute with the model
+      try {
+        const response = await this.ollama.generate({
+          model: modelName,
+          prompt: skillPrompt,
+          stream: false,
+          options: {
+            temperature: 0.2,
+            num_predict: 2048,
+            num_ctx: 4096,
+          }
+        });
+
+        // Track success
+        if (this.skillTracker) {
+          this.skillTracker.recordLocalSuccess(skillName);
+        }
+
+        return {
+          output: response.response.trim(),
+          tokens: response.eval_count || 0
+        };
+      } catch (error: any) {
+        logger.error('Model execution failed for skill', { skill: skillName, error: error.message });
+
+        // Track failure
+        if (this.skillTracker) {
+          this.skillTracker.recordLocalFailure(skillName);
+        }
+
+        return {
+          output: `Failed to execute skill: ${error.message}`
+        };
+      }
+    } else if (result.success) {
+      // Direct execution success (from claude command)
       if (this.skillTracker) {
         this.skillTracker.recordLocalSuccess(skillName);
       }

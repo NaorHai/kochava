@@ -2,6 +2,9 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import logger from '../utils/logger.js';
 import { MCPTool, SkillDefinition } from './tool-discovery.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { homedir } from 'os';
 
 const execAsync = promisify(exec);
 
@@ -9,6 +12,7 @@ export interface ToolExecutionResult {
   success: boolean;
   output: string;
   error?: string;
+  isSkillInstructions?: boolean;
 }
 
 export class ToolExecutor {
@@ -16,11 +20,23 @@ export class ToolExecutor {
     try {
       logger.debug('Executing skill', { skill: skill.name, args });
 
-      // Try multiple command formats
+      // Read skill definition from .md file
+      const skillContent = await this.readSkillDefinition(skill.name);
+
+      if (skillContent) {
+        // Return the skill instructions for the model to follow
+        return {
+          success: true,
+          output: skillContent,
+          isSkillInstructions: true
+        };
+      }
+
+      // Fallback: Try executing via claude command
       const commands = [
-        `claude /${skill.name} ${args}`,           // Slash command format
-        `claude --skill ${skill.name} ${args}`,    // Flag format
-        `echo "/${skill.name} ${args}" | claude`   // Piped format
+        `claude /${skill.name} ${args}`,
+        `claude --skill ${skill.name} ${args}`,
+        `echo "/${skill.name} ${args}" | claude`
       ];
 
       let lastError: any;
@@ -29,7 +45,7 @@ export class ToolExecutor {
         try {
           const { stdout, stderr } = await execAsync(command, {
             timeout: 60000,
-            maxBuffer: 1024 * 1024 * 10, // 10MB
+            maxBuffer: 1024 * 1024 * 10,
             env: { ...process.env, CLAUDE_NONINTERACTIVE: '1' }
           });
 
@@ -42,12 +58,12 @@ export class ToolExecutor {
           }
         } catch (error: any) {
           lastError = error;
-          continue; // Try next format
+          continue;
         }
       }
 
-      // All formats failed
-      logger.debug('Skill execution failed (all formats tried)', {
+      // All methods failed
+      logger.debug('Skill execution failed', {
         skill: skill.name,
         error: lastError?.message
       });
@@ -55,7 +71,7 @@ export class ToolExecutor {
       return {
         success: false,
         output: '',
-        error: `Skill '${skill.name}' not available. Try using Claude directly with: /${skill.name} ${args}`
+        error: `Skill '${skill.name}' not available. Make sure the skill file exists in ~/.claude/commands/${skill.name}.md`
       };
     } catch (error: any) {
       logger.debug('Skill execution failed', {
@@ -69,6 +85,31 @@ export class ToolExecutor {
         error: error.message
       };
     }
+  }
+
+  private async readSkillDefinition(skillName: string): Promise<string | null> {
+    const possiblePaths = [
+      // Try commands directory
+      path.join(homedir(), '.claude', 'commands', `${skillName}.md`),
+      // Try blueprints
+      path.join(homedir(), '.claude', 'blueprints', 'sf-adlc', 'commands', `${skillName}.md`),
+      // Try plugins
+      path.join(homedir(), '.claude', 'plugins', skillName, 'SKILL.md'),
+    ];
+
+    for (const filePath of possiblePaths) {
+      try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        logger.debug('Found skill definition', { skill: skillName, path: filePath });
+        return content;
+      } catch (error) {
+        // File doesn't exist, try next path
+        continue;
+      }
+    }
+
+    logger.debug('Skill definition file not found', { skill: skillName });
+    return null;
   }
 
   async executeMCPTool(tool: MCPTool, params: Record<string, any>): Promise<ToolExecutionResult> {

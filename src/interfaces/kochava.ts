@@ -52,6 +52,8 @@ program
   .option('-s, --stats', 'Show usage statistics')
   .option('--sessions', 'List recent sessions')
   .option('--session <id>', 'Resume a previous session by ID')
+  .option('--models', 'List available local models and profiles')
+  .option('--profile <name>', 'Use model profile (default, fast, powerful, minimal)')
   .option('-r, --reset', 'Reset session and token counters')
   .option('-v, --verbose', 'Enable verbose output')
   .option('-m, --model <type>', 'Force specific model (local or claude)')
@@ -69,20 +71,25 @@ program
         return;
       }
 
+      if (options.models) {
+        await showModels();
+        return;
+      }
+
       if (options.reset) {
         console.log(chalk.yellow('✓ Session reset (restart kochava to apply)'));
         return;
       }
 
       if (options.chat || options.interactive) {
-        await runInteractiveMode(options.model, options.session);
+        await runInteractiveMode(options.model, options.session, options.profile);
         return;
       }
 
       const query = queryParts.join(' ');
       if (!query) {
         // Default to interactive mode (like Claude Code CLI)
-        await runInteractiveMode(options.model, options.session);
+        await runInteractiveMode(options.model, options.session, options.profile);
         return;
       }
 
@@ -96,7 +103,7 @@ program
         }
       }
 
-      await runSingleQuery(query, context, options.verbose, options.model, options.session);
+      await runSingleQuery(query, context, options.verbose, options.model, options.session, options.profile);
     } catch (error: any) {
       console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
       process.exit(1);
@@ -105,12 +112,12 @@ program
 
 program.parse();
 
-async function runSingleQuery(query: string, context?: string, verbose?: boolean, forceModel?: string, sessionId?: string) {
+async function runSingleQuery(query: string, context?: string, verbose?: boolean, forceModel?: string, sessionId?: string, profile?: string) {
   if (verbose) {
     console.log(chalk.gray('\n→ Initializing kochava...\n'));
   }
 
-  const orchestrator = await initOrchestrator(sessionId);
+  const orchestrator = await initOrchestrator(sessionId, profile);
 
   if (verbose) {
     console.log(chalk.gray('→ Processing your request...\n'));
@@ -128,7 +135,7 @@ async function runSingleQuery(query: string, context?: string, verbose?: boolean
   );
 }
 
-async function runInteractiveMode(forceModel?: string, sessionId?: string) {
+async function runInteractiveMode(forceModel?: string, sessionId?: string, profile?: string) {
   console.log(chalk.magenta(KOCHAVA_ART));
 
   if (sessionId) {
@@ -148,7 +155,7 @@ async function runInteractiveMode(forceModel?: string, sessionId?: string) {
   process.stdout.write(chalk.gray('Loading...'));
 
   const [orchestrator, availableSkills] = await Promise.all([
-    initOrchestrator(sessionId),
+    initOrchestrator(sessionId, profile),
     getAvailableSkills()
   ]);
 
@@ -412,6 +419,55 @@ async function listSessions() {
   }
 }
 
+async function showModels() {
+  const configDir = path.join(__dirname, '../../config');
+  const modelConfig = JSON.parse(
+    await fs.readFile(path.join(configDir, 'model.config.json'), 'utf-8')
+  );
+
+  console.log(chalk.magenta.bold('\n🤖 Available Local Models\n'));
+
+  // Show current configuration
+  console.log(chalk.cyan('Current Configuration:'));
+  console.log(chalk.white(`  Code Editor:  ${modelConfig.models.codeEditor.name}`));
+  console.log(chalk.white(`  Compressor:   ${modelConfig.models.compressor.name}`));
+  console.log(chalk.white(`  Classifier:   ${modelConfig.models.classifier.name}`));
+  console.log(chalk.white(`  Embedding:    ${modelConfig.models.embedding.name}\n`));
+
+  // Show available profiles
+  console.log(chalk.cyan('Available Profiles:'));
+  for (const [key, profile] of Object.entries(modelConfig.profiles)) {
+    const p = profile as any;
+    const indicator = key === 'default' ? chalk.green('(current)') : '';
+    console.log(chalk.white(`  ${key.padEnd(12)} - ${p.description} ${indicator}`));
+    console.log(chalk.gray(`               Code: ${p.models.codeEditor}`));
+  }
+  console.log();
+
+  // Show available code editor models
+  console.log(chalk.cyan('Available Code Editors:'));
+  for (const model of modelConfig.availableModels.codeEditors) {
+    const recommended = model.recommended ? chalk.green('✓') : ' ';
+    console.log(chalk.white(`  ${recommended} ${model.name.padEnd(25)} ${chalk.gray(model.size)} - ${model.description}`));
+  }
+  console.log();
+
+  // Show available compressor models
+  console.log(chalk.cyan('Available Compressors:'));
+  for (const model of modelConfig.availableModels.compressors) {
+    const recommended = model.recommended ? chalk.green('✓') : ' ';
+    console.log(chalk.white(`  ${recommended} ${model.name.padEnd(25)} ${chalk.gray(model.size)} - ${model.description}`));
+  }
+  console.log();
+
+  console.log(chalk.gray('To use a profile:'));
+  console.log(chalk.white('  kochava --profile fast'));
+  console.log(chalk.white('  KOCHAVA_PROFILE=powerful kochava\n'));
+
+  console.log(chalk.gray('To customize models:'));
+  console.log(chalk.white('  Edit: config/model.config.json\n'));
+}
+
 function formatTimeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
 
@@ -421,7 +477,7 @@ function formatTimeAgo(timestamp: number): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-async function initOrchestrator(sessionId?: string): Promise<AIOrchestrator> {
+async function initOrchestrator(sessionId?: string, profileName?: string): Promise<AIOrchestrator> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const bedrockBaseURL = process.env.ANTHROPIC_BEDROCK_BASE_URL;
   const skipBedrockAuth = process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH === '1';
@@ -436,9 +492,24 @@ async function initOrchestrator(sessionId?: string): Promise<AIOrchestrator> {
   const routingConfig: RoutingConfig = JSON.parse(
     await fs.readFile(path.join(configDir, 'routing.config.json'), 'utf-8')
   );
-  const modelConfig: ModelConfig = JSON.parse(
+  let modelConfig: ModelConfig = JSON.parse(
     await fs.readFile(path.join(configDir, 'model.config.json'), 'utf-8')
   );
+
+  // Apply profile if specified (CLI flag or env var)
+  const selectedProfile = profileName || process.env.KOCHAVA_PROFILE;
+  if (selectedProfile && modelConfig.profiles && modelConfig.profiles[selectedProfile]) {
+    const profile = modelConfig.profiles[selectedProfile];
+    logger.debug('Applying model profile', { profile: selectedProfile });
+
+    // Override models with profile
+    modelConfig.models.codeEditor.name = profile.models.codeEditor;
+    modelConfig.models.compressor.name = profile.models.compressor;
+    modelConfig.models.classifier.name = profile.models.classifier;
+    modelConfig.models.embedding.name = profile.models.embedding;
+
+    console.log(chalk.cyan(`Using profile: ${profile.name} - ${profile.description}\n`));
+  }
 
   // Use dummy API key for Bedrock if auth is skipped (gateway handles auth)
   const finalApiKey = bedrockBaseURL && skipBedrockAuth ? 'bedrock-gateway' : (apiKey || 'none');

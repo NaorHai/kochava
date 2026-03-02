@@ -29,5 +29,135 @@
     "llama3.1:8b",
     "qwen2.5-coder:7b",
     "nomic-embed-text"
-  ]
+  ],
+  "availableModels": {
+    "codeEditors": [
+      {
+        "name": "qwen2.5-coder:7b",
+        "description": "Qwen 2.5 Coder - Best balance of speed and quality",
+        "size": "5GB",
+        "recommended": true
+      },
+      {
+        "name": "qwen2.5-coder:14b",
+        "description": "Qwen 2.5 Coder 14B - More powerful for complex tasks",
+        "size": "9GB",
+        "recommended": false
+      },
+      {
+        "name": "deepseek-coder:6.7b",
+        "description": "DeepSeek Coder - Strong code understanding",
+        "size": "4GB",
+        "recommended": false
+      },
+      {
+        "name": "codellama:7b",
+        "description": "Code Llama - Meta's code-focused model",
+        "size": "4GB",
+        "recommended": false
+      },
+      {
+        "name": "starcoder2:7b",
+        "description": "StarCoder 2 - Multi-language code generation",
+        "size": "4GB",
+        "recommended": false
+      }
+    ],
+    "compressors": [
+      {
+        "name": "llama3.1:8b",
+        "description": "Llama 3.1 - Best for summarization",
+        "size": "5GB",
+        "recommended": true
+      },
+      {
+        "name": "llama3.2:3b",
+        "description": "Llama 3.2 - Faster, lighter compression",
+        "size": "2GB",
+        "recommended": false
+      },
+      {
+        "name": "mistral:7b",
+        "description": "Mistral - Good balance of speed and quality",
+        "size": "4GB",
+        "recommended": false
+      },
+      {
+        "name": "phi3:3b",
+        "description": "Phi 3 - Microsoft's efficient model",
+        "size": "2GB",
+        "recommended": false
+      }
+    ],
+    "classifiers": [
+      {
+        "name": "llama3.2:3b",
+        "description": "Llama 3.2 - Fast and accurate classification",
+        "size": "2GB",
+        "recommended": true
+      },
+      {
+        "name": "phi3:3b",
+        "description": "Phi 3 - Very fast, lower memory",
+        "size": "2GB",
+        "recommended": false
+      }
+    ],
+    "embeddings": [
+      {
+        "name": "nomic-embed-text",
+        "description": "Nomic Embed - Best for code embeddings",
+        "size": "274MB",
+        "recommended": true
+      },
+      {
+        "name": "mxbai-embed-large",
+        "description": "MxBai - Larger, more accurate embeddings",
+        "size": "670MB",
+        "recommended": false
+      }
+    ]
+  },
+  "profiles": {
+    "default": {
+      "name": "Balanced",
+      "description": "Best balance of speed, quality, and memory usage",
+      "models": {
+        "codeEditor": "qwen2.5-coder:7b",
+        "compressor": "llama3.1:8b",
+        "classifier": "llama3.2:3b",
+        "embedding": "nomic-embed-text"
+      }
+    },
+    "fast": {
+      "name": "Fast",
+      "description": "Optimized for speed and low memory",
+      "models": {
+        "codeEditor": "qwen2.5-coder:7b",
+        "compressor": "llama3.2:3b",
+        "classifier": "llama3.2:3b",
+        "embedding": "nomic-embed-text"
+      }
+    },
+    "powerful": {
+      "name": "Powerful",
+      "description": "Maximum quality, requires more memory",
+      "models": {
+        "codeEditor": "qwen2.5-coder:14b",
+        "compressor": "llama3.1:8b",
+        "classifier": "llama3.2:3b",
+        "embedding": "mxbai-embed-large"
+      }
+    },
+    "minimal": {
+      "name": "Minimal",
+      "description": "Lowest memory usage, fastest startup",
+      "models": {
+        "codeEditor": "phi3:3b",
+        "compressor": "phi3:3b",
+        "classifier": "phi3:3b",
+        "embedding": "nomic-embed-text"
+      }
+    }
+  }
 }
