@@ -7,7 +7,7 @@ export type TaskType =
   | 'architecture'
   | 'multi_file_reasoning';
 
-export type RouteTarget = 'local_code' | 'local_compress' | 'local_general' | 'claude';
+export type RouteTarget = 'local_code' | 'local_compress' | 'local_general' | 'cursor' | 'claude';
 
 export interface ClassificationResult {
   taskType: TaskType;
@@ -149,8 +149,10 @@ export interface EscalationConfig {
 export interface UsageMetrics {
   totalRequests: number;
   localRequests: number;
+  cursorRequests: number;
   claudeRequests: number;
   tokensSaved: number;
+  cursorTokensUsed: number;
   claudeTokensUsed: number;
   avgLatency: number;
 }

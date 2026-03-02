@@ -1,6 +1,7 @@
 import { TaskRouter } from './router.js';
 import { LocalExecutor } from './local-executor.js';
 import { ClaudeClient } from '../claude/client.js';
+import { CursorClient } from '../cursor/client.js';
 import { ClaudeSupervisor } from '../claude/supervisor.js';
 import { ContextOptimizer } from './context_optimizer.js';
 import { MemoryManager } from './memory-manager.js';
@@ -28,6 +29,7 @@ const __dirname = path.dirname(__filename);
 export class AIOrchestrator {
   private router: TaskRouter;
   private localExecutor: LocalExecutor;
+  private cursorClient: CursorClient;
   private claudeClient: ClaudeClient;
   private supervisor: ClaudeSupervisor;
   private contextOptimizer: ContextOptimizer;
@@ -55,6 +57,7 @@ export class AIOrchestrator {
     );
 
     const tokenBudget = parseInt(process.env.CLAUDE_TOKEN_BUDGET || '8000', 10);
+    this.cursorClient = new CursorClient();
     this.claudeClient = new ClaudeClient(claudeApiKey, tokenBudget, bedrockBaseURL);
     this.supervisor = new ClaudeSupervisor(
       this.claudeClient,
@@ -73,8 +76,10 @@ export class AIOrchestrator {
     this.metrics = {
       totalRequests: 0,
       localRequests: 0,
+      cursorRequests: 0,
       claudeRequests: 0,
       tokensSaved: 0,
+      cursorTokensUsed: 0,
       claudeTokensUsed: 0,
       avgLatency: 0
     };
@@ -177,6 +182,20 @@ export class AIOrchestrator {
       } catch (error: any) {
         response = await this.handleClaudeFailure(error, decision, input, codeContext, context);
       }
+    } else if (decision.target === 'cursor') {
+      try {
+        response = await this.executeWithCursor(input, codeContext, context);
+        this.metrics.cursorRequests++;
+        this.metrics.cursorTokensUsed += response.tokens;
+
+        // Cursor is cheaper than Claude but more expensive than Ollama
+        const estimatedClaudeTokens = Math.ceil(response.tokens * 1.2);
+        this.metrics.tokensSaved += estimatedClaudeTokens;
+      } catch (error: any) {
+        // Fallback to Claude if Cursor fails
+        logger.warn('Cursor execution failed, falling back to Claude', { error: error.message });
+        response = await this.handleCursorFailure(error, decision, input, codeContext, context);
+      }
     } else {
       // Use the router's decision (already chose local_code/local_compress/local_general based on tool requirements)
       const formattedHistory = this.formatHistoryForLocal(context.history);
@@ -224,8 +243,11 @@ export class AIOrchestrator {
       `Claude failed: ${errorMessage}`
     );
 
-    // Use the original router decision for fallback
-    const fallbackTarget = decision.target === 'claude' ? 'local_code' : decision.target;
+    // Use the original router decision for fallback (only local targets)
+    const fallbackTarget =
+      decision.target === 'claude' || decision.target === 'cursor'
+        ? 'local_code'
+        : decision.target;
 
     try {
       const formattedHistory = this.formatHistoryForLocal(context.history);
@@ -341,6 +363,44 @@ export class AIOrchestrator {
     return await this.localExecutor.execute(target, prompt, optimizedContext, history);
   }
 
+  private async executeWithCursor(
+    prompt: string,
+    context: string | undefined,
+    taskContext: TaskContext
+  ): Promise<ModelResponse> {
+    if (!this.cursorClient.isAvailable()) {
+      throw new Error('Cursor client not available. Set CURSOR_API_KEY environment variable.');
+    }
+
+    let optimizedContext = context;
+
+    if (context) {
+      const optimized = this.contextOptimizer.optimize(context);
+      optimizedContext = optimized.optimized;
+
+      logger.debug('Context optimized for Cursor', {
+        tokensSaved: optimized.tokensSaved,
+        operations: optimized.operations
+      });
+    }
+
+    // Build full prompt with history
+    let fullPrompt = prompt;
+    if (taskContext.history && taskContext.history.length > 0) {
+      const historyText = this.formatHistoryForLocal(taskContext.history);
+      fullPrompt = `${historyText}\n\nUser: ${prompt}`;
+    }
+
+    const response = await this.cursorClient.generate(fullPrompt, optimizedContext);
+
+    return {
+      content: response.content,
+      model: response.model,
+      tokens: response.tokens,
+      latency: 0 // Latency tracked internally
+    };
+  }
+
   private async executeWithClaude(
     prompt: string,
     context: string | undefined,
@@ -370,6 +430,24 @@ export class AIOrchestrator {
       optimizedContext,
       taskContext.history
     );
+  }
+
+  private async handleCursorFailure(
+    error: any,
+    decision: RoutingDecision,
+    input: string,
+    codeContext: string | undefined,
+    context: TaskContext
+  ): Promise<ModelResponse> {
+    logger.warn('Cursor failed, escalating to Claude', {
+      error: error.message,
+      originalTarget: decision.target
+    });
+
+    this.escalationManager.logEscalation(decision, 'claude', `Cursor failure: ${error.message}`);
+
+    // Fallback to Claude
+    return await this.executeWithClaude(input, codeContext, context);
   }
 
   private estimateFileCount(codeContext: string): number {

@@ -74,20 +74,16 @@ export class TaskRouter {
     const taskDef = this.routingConfig.taskTypes[classification.taskType];
     let target = taskDef.route;
 
-    const shouldEscalate = this.shouldEscalateToCloud(
+    // 3-tier smart routing: Ollama (1-3) → Cursor (4-7) → Claude (8-10)
+    const originalTarget = target;
+    target = this.determineSmartRoute(
       complexityScore.score,
       classification.confidence,
-      taskDef.maxComplexity
+      taskDef.maxComplexity,
+      target
     );
 
-    if (shouldEscalate && target !== 'claude') {
-      logger.debug('Escalating to Claude', {
-        originalTarget: target,
-        complexity: complexityScore.score,
-        confidence: classification.confidence
-      });
-      target = 'claude';
-    }
+    const shouldEscalate = originalTarget !== target;
 
     const decision: RoutingDecision = {
       target,
@@ -108,6 +104,7 @@ export class TaskRouter {
 
   private estimateComplexity(target: RouteTarget, context: TaskContext): number {
     if (target === 'claude') return 8;
+    if (target === 'cursor') return 5;
     if (context.fileCount && context.fileCount > 2) return 6;
     return 3;
   }
@@ -115,6 +112,7 @@ export class TaskRouter {
   private inferTaskType(target: RouteTarget): 'trivial_edit' | 'explanation' | 'architecture' {
     const mapping: Record<RouteTarget, 'trivial_edit' | 'explanation' | 'architecture'> = {
       'claude': 'architecture',
+      'cursor': 'explanation',
       'local_code': 'trivial_edit',
       'local_general': 'explanation',
       'local_compress': 'explanation'
@@ -147,5 +145,54 @@ export class TaskRouter {
     }
 
     return false;
+  }
+
+  /**
+   * 3-tier smart routing based on complexity
+   *
+   * Tier 1 (Ollama): Complexity 1-3 - Free local models
+   * Tier 2 (Cursor): Complexity 4-7 - Licensed cloud models (already paid for)
+   * Tier 3 (Claude): Complexity 8-10 - Premium Claude API (pay-per-use)
+   *
+   * Benefits:
+   * - Saves money by using Cursor instead of Claude for medium complexity
+   * - Leverages existing Cursor license
+   * - Maintains quality for complex tasks with Claude
+   */
+  private determineSmartRoute(
+    complexity: number,
+    confidence: number,
+    maxComplexity: number,
+    defaultTarget: RouteTarget
+  ): RouteTarget {
+    // Disable escalation if config says so
+    if (!this.routingConfig.escalation.enabled) {
+      return defaultTarget;
+    }
+
+    // Complexity 8-10: Route to Claude (most complex)
+    if (complexity >= 8 || complexity > maxComplexity) {
+      logger.debug('Routing to Claude (high complexity)', { complexity });
+      return 'claude';
+    }
+
+    // Complexity 4-7: Route to Cursor (medium complexity)
+    if (complexity >= 4) {
+      logger.debug('Routing to Cursor (medium complexity)', { complexity });
+      return 'cursor';
+    }
+
+    // Complexity 1-3: Keep local
+    // Check if we need to escalate due to low confidence
+    if (
+      confidence < this.routingConfig.escalation.confidenceThreshold &&
+      complexity >= 3
+    ) {
+      logger.debug('Escalating to Cursor (low confidence)', { complexity, confidence });
+      return 'cursor';
+    }
+
+    // Stay local (Ollama)
+    return defaultTarget.startsWith('local') ? defaultTarget : 'local_general';
   }
 }
