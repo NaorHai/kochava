@@ -6,6 +6,7 @@ import { ClaudeSupervisor } from '../claude/supervisor.js';
 import { ContextOptimizer } from './context_optimizer.js';
 import { MemoryManager } from './memory-manager.js';
 import { EscalationManager } from './escalation.js';
+import { RateLimitCache } from './rate-limit-cache.js';
 import { CodeIndexer } from '../retrieval/indexer.js';
 import { Embedder } from '../retrieval/embedder.js';
 import { SkillTracker } from './skill-tracker.js';
@@ -35,6 +36,7 @@ export class AIOrchestrator {
   private contextOptimizer: ContextOptimizer;
   private memoryManager: MemoryManager;
   private escalationManager: EscalationManager;
+  private rateLimitCache: RateLimitCache;
   private indexer?: CodeIndexer;
   private skillTracker: SkillTracker;
   private routingConfig: RoutingConfig;
@@ -73,6 +75,10 @@ export class AIOrchestrator {
     this.escalationManager = new EscalationManager();
     this.skillTracker = new SkillTracker();
 
+    // Rate limit cache with configurable duration (default 4 hours)
+    const rateLimitHours = parseInt(process.env.RATE_LIMIT_CACHE_HOURS || '4', 10);
+    this.rateLimitCache = new RateLimitCache(rateLimitHours);
+
     this.metrics = {
       totalRequests: 0,
       localRequests: 0,
@@ -102,6 +108,9 @@ export class AIOrchestrator {
 
     // Load skill stats
     await this.skillTracker.load();
+
+    // Load rate limit cache
+    await this.rateLimitCache.load();
 
     // Initialize memory manager and load session if exists
     await this.memoryManager.initialize();
@@ -172,6 +181,15 @@ export class AIOrchestrator {
       }
     }
 
+    // Check rate limit cache for paid models and fallback if needed
+    if (decision.target === 'claude' && this.rateLimitCache.isRateLimited('claude')) {
+      logger.warn('Claude is rate limited, falling back to Cursor or local');
+      decision.target = this.rateLimitCache.isRateLimited('cursor') ? 'local_general' : 'cursor';
+    } else if (decision.target === 'cursor' && this.rateLimitCache.isRateLimited('cursor')) {
+      logger.warn('Cursor is rate limited, falling back to local');
+      decision.target = 'local_general';
+    }
+
     let response: ModelResponse;
 
     if (decision.target === 'claude') {
@@ -180,6 +198,10 @@ export class AIOrchestrator {
         this.metrics.claudeRequests++;
         this.metrics.claudeTokensUsed += response.tokens;
       } catch (error: any) {
+        // Check if it's a rate limit error
+        if (this.isRateLimitError(error)) {
+          await this.rateLimitCache.markRateLimited('claude', error.message);
+        }
         response = await this.handleClaudeFailure(error, decision, input, codeContext, context);
       }
     } else if (decision.target === 'cursor') {
@@ -192,6 +214,10 @@ export class AIOrchestrator {
         const estimatedClaudeTokens = Math.ceil(response.tokens * 1.2);
         this.metrics.tokensSaved += estimatedClaudeTokens;
       } catch (error: any) {
+        // Check if it's a rate limit error
+        if (this.isRateLimitError(error)) {
+          await this.rateLimitCache.markRateLimited('cursor', error.message);
+        }
         // Fallback to Claude if Cursor fails
         logger.warn('Cursor execution failed, falling back to Claude', { error: error.message });
         response = await this.handleCursorFailure(error, decision, input, codeContext, context);
@@ -465,6 +491,24 @@ export class AIOrchestrator {
       .join('\n\n');
   }
 
+  /**
+   * Check if an error is a rate limit error from the API
+   */
+  private isRateLimitError(error: any): boolean {
+    const errorMessage = error.message?.toLowerCase() || '';
+    const errorType = error.errorType?.toLowerCase() || '';
+    const statusCode = error.status || error.statusCode;
+
+    // Check for common rate limit indicators
+    return (
+      statusCode === 429 ||
+      errorType === 'rate_limit_error' ||
+      errorMessage.includes('rate limit') ||
+      errorMessage.includes('too many requests') ||
+      errorMessage.includes('quota exceeded')
+    );
+  }
+
   private logRequest(
     decision: any,
     response: ModelResponse,
@@ -481,5 +525,19 @@ export class AIOrchestrator {
       localRatio: this.metrics.localRequests / this.metrics.totalRequests,
       tokensSaved: this.metrics.tokensSaved
     });
+  }
+
+  /**
+   * Get rate limit status (for /stats command)
+   */
+  getRateLimitStatus(): Array<{ target: string; minutesRemaining: number; reason?: string }> {
+    return this.rateLimitCache.getRateLimitedModels();
+  }
+
+  /**
+   * Clear rate limit for a model (admin command)
+   */
+  async clearRateLimit(target: RouteTarget): Promise<void> {
+    await this.rateLimitCache.clearRateLimit(target);
   }
 }
