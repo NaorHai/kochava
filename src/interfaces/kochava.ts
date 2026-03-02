@@ -3,7 +3,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import * as readline from 'readline';
-import { emitKeypressEvents } from 'readline';
 import { AIOrchestrator } from '../core/orchestrator.js';
 import { RoutingConfig, ModelConfig } from '../types/index.js';
 import logger from '../utils/logger.js';
@@ -171,16 +170,43 @@ async function runInteractiveMode(forceModel?: string) {
     completer: (line: string) => {
       const trimmed = line.trim();
 
+      // Special handling for just "/"
+      if (trimmed === '/') {
+        // Show all commands nicely formatted
+        console.log('\n' + chalk.cyan.bold('Available commands & skills:'));
+        const cols = 3;
+        for (let i = 0; i < Math.min(allCommands.length, 30); i += cols) {
+          const row = allCommands.slice(i, i + cols);
+          console.log('  ' + row.map(c => chalk.white(c.padEnd(20))).join(''));
+        }
+        if (allCommands.length > 30) {
+          console.log(chalk.gray(`  ... and ${allCommands.length - 30} more`));
+        }
+        console.log(chalk.gray('\nType to filter (e.g., /adlc-), press Tab to cycle\n'));
+        return [allCommands, trimmed];
+      }
+
       // If starts with /, complete commands/skills
       if (trimmed.startsWith('/')) {
         const hits = allCommands.filter(c => c.toLowerCase().startsWith(trimmed.toLowerCase()));
 
-        // If no matches, show all options
+        // Show filtered results inline
+        if (hits.length > 0 && hits.length <= 15) {
+          console.log('\n' + chalk.cyan(`Matching (${hits.length}):`));
+          const cols = 3;
+          for (let i = 0; i < hits.length; i += cols) {
+            const row = hits.slice(i, i + cols);
+            console.log('  ' + row.map(c => chalk.white(c.padEnd(20))).join(''));
+          }
+          console.log();
+        }
+
+        // If no matches, show all
         if (hits.length === 0) {
+          console.log('\n' + chalk.yellow('No matches. Showing all:'));
           return [allCommands, trimmed];
         }
 
-        // If partial match, show matching options
         return [hits, trimmed];
       }
 
@@ -189,33 +215,10 @@ async function runInteractiveMode(forceModel?: string) {
     }
   });
 
-  // Auto-complete trigger on "/" keystroke
-  const stdin = process.stdin;
-
-  if (stdin.isTTY) {
-    emitKeypressEvents(stdin);
-    if (stdin.setRawMode) {
-      stdin.setRawMode(true);
-    }
-
-    stdin.on('keypress', (str, key) => {
-      // Track current line content
-      if (str === '/') {
-        // User just typed /, trigger auto-complete
-        setTimeout(() => {
-          const lineContent = (rl as any).line || '';
-          if (lineContent.trim() === '/') {
-            // Auto-trigger completion
-            (rl as any)._tabComplete();
-          }
-        }, 10);
-      }
-    });
-  }
-
-  // Show startup tip
+  // Show startup tip with clear instructions
   if (availableSkills.length > 0) {
-    console.log(chalk.dim(`💡 Tip: Type "/" to see all skills\n`));
+    console.log(chalk.cyan.bold(`✨ ${availableSkills.length} skills loaded!`));
+    console.log(chalk.gray(`   Type "/" then Tab to see all • Type "/adlc-" then Tab to filter\n`));
   }
 
   rl.prompt();
