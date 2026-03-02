@@ -29,6 +29,8 @@
 - 💰 **70%+ Savings** - Minimize Claude API usage
 - 🔒 **Privacy First** - Code never leaves your machine for local tasks
 - 🚀 **Auto Fallback** - Switches to local when Claude credits exhausted
+- 🎯 **Skill Auto-Complete** - Simple skills (format, lint, explain) run locally automatically
+- ☁️ **Bedrock Support** - Works with AWS Bedrock and enterprise gateways
 
 ## Quick Start
 
@@ -108,9 +110,15 @@ Add Claude API key (optional) in `.env`:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-your-key-here  # Optional
+
+# AWS Bedrock (Optional - for enterprise users)
+ANTHROPIC_BEDROCK_BASE_URL=https://your-bedrock-gateway.com/bedrock
+
 CLAUDE_TOKEN_BUDGET=8000
 AUTO_FALLBACK_ENABLED=true
 ```
+
+**Note**: Setup script auto-extracts API key and Bedrock URL from `~/.claude/settings.json` if available.
 
 ## Statistics
 

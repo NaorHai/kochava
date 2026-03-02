@@ -221,8 +221,12 @@ async function showStats() {
 
 async function initOrchestrator(): Promise<AIOrchestrator> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  const bedrockBaseURL = process.env.ANTHROPIC_BEDROCK_BASE_URL;
+
   if (!apiKey || apiKey === 'none') {
     console.log(chalk.yellow('⚠️  No Claude API key set - using FREE local models only\n'));
+  } else if (bedrockBaseURL) {
+    logger.debug('Using AWS Bedrock endpoint');
   }
 
   const configDir = path.join(__dirname, '../../config');
@@ -233,7 +237,7 @@ async function initOrchestrator(): Promise<AIOrchestrator> {
     await fs.readFile(path.join(configDir, 'model.config.json'), 'utf-8')
   );
 
-  const orchestrator = new AIOrchestrator(routingConfig, modelConfig, apiKey || 'none');
+  const orchestrator = new AIOrchestrator(routingConfig, modelConfig, apiKey || 'none', bedrockBaseURL);
   await orchestrator.initialize();
 
   return orchestrator;

@@ -36,7 +36,7 @@ export class AIOrchestrator {
   private modelConfig: ModelConfig;
   private metrics: UsageMetrics;
 
-  constructor(routingConfig: RoutingConfig, modelConfig: ModelConfig, claudeApiKey: string) {
+  constructor(routingConfig: RoutingConfig, modelConfig: ModelConfig, claudeApiKey: string, bedrockBaseURL?: string) {
     this.routingConfig = routingConfig;
     this.modelConfig = modelConfig;
 
@@ -47,7 +47,7 @@ export class AIOrchestrator {
     );
 
     const tokenBudget = parseInt(process.env.CLAUDE_TOKEN_BUDGET || '8000', 10);
-    this.claudeClient = new ClaudeClient(claudeApiKey, tokenBudget);
+    this.claudeClient = new ClaudeClient(claudeApiKey, tokenBudget, bedrockBaseURL);
     this.supervisor = new ClaudeSupervisor(
       this.claudeClient,
       routingConfig.escalation.allowClaudeOverride

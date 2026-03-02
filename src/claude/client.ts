@@ -38,8 +38,16 @@ export class ClaudeClient {
   private tokenBudget: number;
   private tokensUsed: number = 0;
 
-  constructor(apiKey: string, tokenBudget: number = 8000) {
-    this.client = new Anthropic({ apiKey });
+  constructor(apiKey: string, tokenBudget: number = 8000, baseURL?: string) {
+    const config: any = { apiKey };
+
+    // Support AWS Bedrock via custom baseURL
+    if (baseURL) {
+      config.baseURL = baseURL;
+      logger.info('Using custom Bedrock endpoint', { baseURL });
+    }
+
+    this.client = new Anthropic(config);
     this.tokenBudget = tokenBudget;
   }
 

@@ -101,12 +101,20 @@ if [ "$INSTALL_TYPE" = "docker" ]; then
     echo -e "${CYAN}📝 Creating .env file...${NC}"
     cp .env.example .env
 
-    # Try to extract Claude API key from Claude Code settings
+    # Try to extract Claude API key and Bedrock URL from Claude Code settings
     if command -v jq &> /dev/null && [ -f "$HOME/.claude/settings.json" ]; then
       API_KEY=$(jq -r '.env.ANTHROPIC_AUTH_TOKEN // empty' "$HOME/.claude/settings.json" 2>/dev/null)
+      BEDROCK_URL=$(jq -r '.env.ANTHROPIC_BEDROCK_BASE_URL // empty' "$HOME/.claude/settings.json" 2>/dev/null)
+
       if [ -n "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
         echo -e "${GREEN}✓ Found Claude API key in settings${NC}"
-        sed -i.bak "s/ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=$API_KEY/" .env
+        sed -i.bak "s|ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$API_KEY|" .env
+        rm .env.bak 2>/dev/null || true
+      fi
+
+      if [ -n "$BEDROCK_URL" ] && [ "$BEDROCK_URL" != "null" ]; then
+        echo -e "${GREEN}✓ Found Bedrock base URL in settings${NC}"
+        sed -i.bak "s|ANTHROPIC_BEDROCK_BASE_URL=.*|ANTHROPIC_BEDROCK_BASE_URL=$BEDROCK_URL|" .env
         rm .env.bak 2>/dev/null || true
       fi
     fi
@@ -217,14 +225,23 @@ else
     cp .env.example .env
     echo -e "${GREEN}✓ .env created${NC}"
 
-    # Try to extract Claude API key from Claude Code settings
+    # Try to extract Claude API key and Bedrock URL from Claude Code settings
     if command -v jq &> /dev/null && [ -f "$HOME/.claude/settings.json" ]; then
       API_KEY=$(jq -r '.env.ANTHROPIC_AUTH_TOKEN // empty' "$HOME/.claude/settings.json" 2>/dev/null)
+      BEDROCK_URL=$(jq -r '.env.ANTHROPIC_BEDROCK_BASE_URL // empty' "$HOME/.claude/settings.json" 2>/dev/null)
+
       if [ -n "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
         echo -e "${GREEN}✓ Found Claude API key in settings${NC}"
-        sed -i.bak "s/ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=$API_KEY/" .env
+        sed -i.bak "s|ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$API_KEY|" .env
         rm .env.bak 2>/dev/null || true
         echo -e "${GREEN}✓ API key configured automatically${NC}"
+      fi
+
+      if [ -n "$BEDROCK_URL" ] && [ "$BEDROCK_URL" != "null" ]; then
+        echo -e "${GREEN}✓ Found Bedrock base URL in settings${NC}"
+        sed -i.bak "s|ANTHROPIC_BEDROCK_BASE_URL=.*|ANTHROPIC_BEDROCK_BASE_URL=$BEDROCK_URL|" .env
+        rm .env.bak 2>/dev/null || true
+        echo -e "${GREEN}✓ Bedrock endpoint configured${NC}"
       fi
     fi
   else

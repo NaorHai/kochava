@@ -1,11 +1,13 @@
 import { TaskClassifier } from './classifier.js';
 import { ComplexityScorer } from './complexity.js';
+import { SkillClassifier } from './skill-classifier.js';
 import { RoutingDecision, TaskContext, RoutingConfig, ModelConfig } from '../types/index.js';
 import logger from '../utils/logger.js';
 
 export class TaskRouter {
   private classifier: TaskClassifier;
   private complexityScorer: ComplexityScorer;
+  private skillClassifier: SkillClassifier;
   private routingConfig: RoutingConfig;
 
   constructor(routingConfig: RoutingConfig, modelConfig: ModelConfig) {
@@ -14,11 +16,31 @@ export class TaskRouter {
       routingConfig
     );
     this.complexityScorer = new ComplexityScorer();
+    this.skillClassifier = new SkillClassifier();
     this.routingConfig = routingConfig;
   }
 
   async route(context: TaskContext): Promise<RoutingDecision> {
     const startTime = Date.now();
+
+    // First check if this is a simple skill that can be auto-completed locally
+    const skillClassification = this.skillClassifier.classify(context.input);
+
+    if (skillClassification.isSkill && this.skillClassifier.shouldUseLocalForSkill(skillClassification, context.input.length)) {
+      logger.debug('Routing simple skill to local', {
+        skill: skillClassification.skillName,
+        type: skillClassification.skillType
+      });
+
+      return {
+        target: 'local_code',
+        taskType: 'trivial_edit',
+        complexity: 2,
+        confidence: skillClassification.confidence,
+        reasoning: `Simple skill '${skillClassification.skillName}' can be handled locally`,
+        shouldEscalate: false
+      };
+    }
 
     const classification = await this.classifier.classify(context.input);
 
