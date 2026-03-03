@@ -271,9 +271,9 @@ async function runInteractiveMode(forceModel?: string, sessionId?: string, profi
     }
   };
 
-  // Show startup tip with clear instructions
-  if (availableSkills.length > 0) {
-    console.log(chalk.cyan.bold(`✨ ${availableSkills.length} skills loaded!`));
+  // Show startup tip with clear instructions (use actual loaded count, not filesystem scan)
+  if (totalTools > 0) {
+    console.log(chalk.cyan.bold(`✨ ${toolCounts.skills} skills + ${toolCounts.mcps} MCPs available!`));
     console.log(chalk.gray(`   Just type "/" to see all • Keep typing to filter\n`));
   }
 
