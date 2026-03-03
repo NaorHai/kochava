@@ -1,6 +1,6 @@
 # Kochava
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-1.5.1-blue.svg)](package.json)
 [![CI](https://github.com/NaorHai/kochava/workflows/CI/badge.svg)](https://github.com/NaorHai/kochava/actions)
 [![Tests](https://img.shields.io/badge/tests-26%20passing-success.svg)](#testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
@@ -25,18 +25,29 @@
 ╚═══════════════════════════════════════════════════════════════════╝
 ```
 
-## 🎉 What's New in v1.3
+## 🎉 What's New in v1.5.1
 
-**Semantic Tool Routing** - Zero-maintenance tool matching using embeddings
-- ✅ Add 100+ tools with 0 code changes
-- ✅ 95%+ accuracy in tool selection
-- ✅ 70% reduction in token overhead
-- ✅ Sub-millisecond tool matching
+**Built-in Shell Tool** - Direct bash command execution
+- ✅ Execute file operations (ls, cat, grep, find) without hallucinations
+- ✅ 30-second timeout and 10MB buffer for safety
+- ✅ Intelligent detection: bash commands skip tool noise, execute directly
+- ✅ Proper parsing for commands with spaces: `command="ls ~/Source"`
 
-**Enhanced Performance**
-- Fast-path routing for 60-70% of queries (~1ms)
-- Semantic tool router (~2ms)
-- Total routing overhead: <5ms
+**M4 Max Optimized Profiles** - Hardware-tuned model configurations
+- ✅ **Balanced** (default): qwen2.5-coder:7b + llama3.1:8b + phi3
+- ✅ **Fast**: Ultra-low latency with phi3 + llama3.2:3b
+- ✅ **Powerful**: qwen2.5:14b (14B) for complex reasoning
+- ✅ **Claude-compatible**: Full multimodal (vision + computer-use)
+
+**Vision & Computer Use** - Claude compatibility extended
+- ✅ llama3.2-vision:11b for image understanding, OCR, screenshot analysis
+- ✅ GUI interaction and automation support
+- ✅ Unified multimodal model for both vision and computer-use tasks
+
+**Quality Fixes**
+- ✅ No more tool description leakage (60% similarity threshold)
+- ✅ Consistent tool counts (20 skills + 8 MCPs)
+- ✅ Clearer prompts: models respond directly for simple requests
 
 [See full changelog →](CHANGELOG.md)
 
@@ -252,11 +263,18 @@ Claude API    Local Models
 
 ## FREE Local Models
 
+### Default Profile (Balanced) - M4 Max Optimized
 All models included (~12GB one-time download):
-- **llama3.2:3b** (2GB) - Classification
-- **llama3.1:8b** (5GB) - Compression
-- **qwen2.5-coder:7b** (5GB) - Code editing
-- **nomic-embed-text** (274MB) - Embeddings
+- **phi3** (2GB) - Classification & routing
+- **llama3.1:8b** (5GB) - Context compression
+- **qwen2.5-coder:7b** (5GB) - Code editing & general tasks
+- **nomic-embed-text** (274MB) - Semantic embeddings
+- **shell** (built-in) - Direct bash execution
+
+### Optional Profiles
+- **Fast**: phi3 + llama3.2:3b (~4GB) - Ultra-low latency
+- **Powerful**: qwen2.5:14b + qwen2.5-coder:14b (~18GB) - Maximum quality
+- **Claude-compatible**: + llama3.2-vision:11b (~26GB) - Vision + computer-use
 
 ## Advanced
 
