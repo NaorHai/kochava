@@ -59,11 +59,14 @@ export class ToolExecutor {
           }
         }
 
-        // For non-bash skills, return instructions for model to follow
+        // For non-bash skills, check if they return direct output or instructions
+        // Skills that return JSON, structured data, or command output should NOT pass through model
+        const isDirectOutput = this.isDirectOutputSkill(skill.name, skillContent);
+
         return {
           success: true,
           output: skillContent,
-          isSkillInstructions: true
+          isSkillInstructions: !isDirectOutput  // Only pass instructions through model
         };
       }
 
@@ -85,6 +88,57 @@ export class ToolExecutor {
         error: error.message
       };
     }
+  }
+
+  /**
+   * Check if skill returns direct output (not instructions for model)
+   *
+   * Direct output skills return structured data (JSON, lists, etc) that should NOT be processed by LLM
+   * Instruction skills return prompts/guidance that SHOULD be processed by LLM
+   */
+  private isDirectOutputSkill(skillName: string, skillContent: string): boolean {
+    // Skills that always return direct output
+    const directOutputSkills = [
+      'budget',           // Returns JSON budget data
+      'stats',            // Returns usage statistics
+      'sessions',         // Returns session list
+      'list',            // Returns list of items
+      'search',          // Returns search results
+      'get',             // Returns retrieved data
+      'show',            // Returns display data
+      'fetch',           // Returns fetched data
+      'query',           // Returns query results
+      'find',            // Returns search results
+      'read',            // Returns file contents
+      'cat',             // Returns file contents
+      'ls',              // Returns directory listing
+      'mcp-auth',        // Returns auth status
+      'mcp-device-auth', // Returns auth flow
+      'ai-exchange-profile' // Returns profile info
+    ];
+
+    // Check if skill name matches direct output pattern
+    if (directOutputSkills.includes(skillName.toLowerCase())) {
+      return true;
+    }
+
+    // Check content indicators - if output starts with JSON or structured data markers
+    const contentLower = skillContent.toLowerCase();
+    const hasJsonOutput = contentLower.includes('```json') ||
+                         contentLower.includes('{"') ||
+                         contentLower.match(/^\s*{/);
+
+    const hasStructuredOutput = contentLower.includes('```') ||
+                               contentLower.includes('| ') || // Table format
+                               contentLower.match(/^\s*-\s+/m); // List format
+
+    // If content looks like structured output, it's direct
+    if (hasJsonOutput || hasStructuredOutput) {
+      return true;
+    }
+
+    // Default: assume it's instructions for LLM
+    return false;
   }
 
   /**
@@ -149,7 +203,9 @@ export class ToolExecutor {
     let match;
     while ((match = codeBlockRegex.exec(normalized)) !== null) {
       const command = match[1].trim();
-      if (command && !command.startsWith('#') && command.length > 0) {
+      // Include the entire code block, even if it starts with comments
+      // Bash will handle comments properly during execution
+      if (command && command.length > 0) {
         commands.push(command);
       }
     }

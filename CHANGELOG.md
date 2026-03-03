@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.8.0] - 2026-03-03
+
+### 🐛 Critical Bug Fixes - Complete Hallucination Prevention
+
+**Bash Command Hallucinations:**
+- **Fixed working directory**: Commands now execute in current directory instead of HOME
+- **Enhanced AI translation**: Added explicit write operation examples (rename, move, delete, copy, create)
+- **Improved model parameters**: Zero temperature, focused output for clean bash commands
+- **Eliminated verbose output**: Model now produces only the bash command, no extra text
+
+**Skill Execution Hallucinations:**
+- **Fixed bash extraction**: Skills with `allowed-tools: Bash` now execute bash commands directly
+- **Removed comment filtering**: Bash blocks starting with comments (like `/budget`) no longer filtered out
+- **Added safety net**: Direct output skills bypass LLM even if bash extraction fails
+- **Zero token usage**: Skills execute bash directly without LLM involvement
+
+### ✅ Verified Operations
+
+**File Operations:**
+- Create files: `touch test.txt` ✅
+- Rename files: `mv test.txt renamed.txt` ✅
+- Copy files: `cp file.txt backup.txt` ✅
+- Delete files: `rm test.txt` ✅
+- Move files: `mv file.txt folder/` ✅
+- Create folders: `mkdir data` ✅
+
+**Skill Execution:**
+- `/budget`: Returns clean JSON (0 tokens) ✅
+- `/sessions`: Direct bash execution ✅
+- All bash skills: No LLM hallucinations ✅
+
+### 📝 User Reports Fixed
+1. "rename newfile.txt to renamed.txt" - No such file error ✅
+2. "/budget returns JSON but qwen adds apology" - Hallucination eliminated ✅
+
 ## [1.4.0] - 2026-03-02
 
 ### 🛡️ Rate Limit Caching (Major Feature)

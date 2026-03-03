@@ -25,7 +25,7 @@ export class ComputerUseExecutor {
   private readonly useAI: boolean;
 
   constructor() {
-    this.workingDir = process.env.HOME || process.cwd();
+    this.workingDir = process.cwd(); // Use current working directory, not HOME
     this.translator = new BashTranslator('phi3'); // Fast, lightweight model
     this.useAI = process.env.DISABLE_BASH_TRANSLATOR !== 'true';
   }

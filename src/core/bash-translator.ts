@@ -38,14 +38,22 @@ export class BashTranslator {
     try {
       const startTime = Date.now();
 
-      const prompt = `Convert this request into a bash command. Output ONLY the command, no explanations.
+      const prompt = `You are a bash command translator. Your ONLY job is to output a single bash command.
 
-RULES:
+CRITICAL RULES:
+- Output ONLY the bash command - NO explanations, NO extra text, NO examples, NO markdown
+- ONE command per line - take the FIRST line only
 - "list" or "show" = list files (NO wc -l)
 - "how many" or "count" = count files (USE wc -l)
+- "rename" = mv command
+- "move" = mv command
+- "delete" or "remove" = rm command
+- "copy" = cp command
+- "create" file = touch command
+- "create" folder = mkdir command
 - Keep commands SIMPLE - avoid complex grep patterns
 
-EXAMPLES:
+EXAMPLES - Read operations:
 "show me all python files" → find . -name "*.py"
 "list images on desktop" → ls -1 ~/Desktop 2>/dev/null | grep -iE '\\.(jpg|png|gif|jpeg|bmp)$'
 "list files on desktop" → ls -1 ~/Desktop
@@ -62,6 +70,17 @@ EXAMPLES:
 "find files modified today" → find . -type f -mtime 0
 "what's going on" → ps aux
 
+EXAMPLES - Write operations:
+"rename test.txt to newname.txt" → mv test.txt newname.txt
+"rename myfile.py to script.py" → mv myfile.py script.py
+"move file.txt to folder/" → mv file.txt folder/
+"delete test.txt" → rm test.txt
+"remove oldfile.log" → rm oldfile.log
+"copy file.txt to backup.txt" → cp file.txt backup.txt
+"create a file called test.txt" → touch test.txt
+"create folder named data" → mkdir data
+"make directory logs" → mkdir logs
+
 REQUEST: ${naturalLanguage}
 COMMAND:`;
 
@@ -70,9 +89,12 @@ COMMAND:`;
         prompt,
         stream: false,
         options: {
-          temperature: 0.1, // Low temperature for deterministic output
-          num_predict: 100, // Short output (just one command)
-          num_ctx: 512 // Small context window
+          temperature: 0.0, // Zero temperature for maximum determinism
+          num_predict: 50,  // Very short output (just one command)
+          num_ctx: 2048,    // Enough context for examples
+          top_k: 10,        // Limit vocabulary for focused output
+          top_p: 0.1,       // Very focused probability mass
+          repeat_penalty: 1.1 // Penalize repetition
         }
       });
 

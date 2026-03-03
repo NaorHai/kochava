@@ -41,6 +41,25 @@ jobs:
         test -f dist/core/orchestrator.js || exit 1
         echo "✓ All build artifacts present"
 
+    - name: Setup Ollama (for integration tests)
+      run: |
+        curl -fsSL https://ollama.com/install.sh | sh
+        ollama serve > /dev/null 2>&1 &
+        sleep 5
+        ollama pull phi3
+        echo "✓ Ollama setup complete"
+      continue-on-error: true
+
+    - name: Run smoke tests
+      run: npm run test:smoke
+      continue-on-error: true
+
+    - name: Run integration tests
+      run: npm run test:suite
+      continue-on-error: true
+      env:
+        DISABLE_BASH_TRANSLATOR: "false"
+
   lint:
     runs-on: ubuntu-latest
 
