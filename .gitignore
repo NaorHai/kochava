@@ -44,3 +44,4 @@ temp/
 
 # Large test files (keep structure, ignore binaries)
 test-data/large/*.bin
+test/test-data/large/

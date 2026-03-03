@@ -203,43 +203,39 @@ export class ComputerUseExecutor {
     }
 
     // "read file X" → find and cat file
-    match = lowerPrompt.match(/(?:read|show|display|cat|view)\s+(?:file\s+|the\s+file\s+)?(.+)/i);
+    match = lowerPrompt.match(/(?:read|show|display|cat|view)\s+(?:the\s+)?(?:file\s+)?(.+)/i);
     if (match) {
       const fileName = match[1].trim();
 
-      // If it's a full path or has extension, use directly
+      // If it's a full path, use directly
       if (fileName.startsWith('/') || fileName.startsWith('~') || fileName.startsWith('./')) {
-        return `cat ${fileName}`;
+        return `cat "${fileName}"`;
       }
 
-      // If it has an extension and no path, check current dir first, then search
-      if (fileName.includes('.')) {
-        return `[ -f "${fileName}" ] && cat "${fileName}" || { file=$(find ~/Desktop ~/Downloads ~/Documents ~ . -maxdepth 1 -type f -iname "*${fileName}*" 2>/dev/null | head -1) && [ -n "$file" ] && cat "$file" || echo "File not found: ${fileName}"; }`;
-      }
-
-      // No extension - search for matching files in common locations
-      return `file=$(find ~/Desktop ~/Downloads ~/Documents ~ . -maxdepth 1 -type f -iname "*${fileName}*" 2>/dev/null | head -1) && [ -n "$file" ] && cat "$file" || echo "File not found: ${fileName}"`;
+      // Check current directory first, then search from home directory
+      return `if [ -f "${fileName}" ]; then cat "${fileName}"; else file=$(find ~ -type f -iname "*${fileName}*" 2>/dev/null | head -1); if [ -n "$file" ]; then cat "$file"; else echo "File not found: ${fileName}"; fi; fi`;
     }
 
     // "open X [in Y]" → find and open file
-    match = prompt.match(/open\s+(.+?)(?:\s+(?:in|on|from)\s+(.+))?$/i);
+    match = prompt.match(/open\s+(?:the\s+)?(?:file\s+)?(.+?)(?:\s+(?:in|on|from)\s+(.+))?$/i);
     if (match) {
-      const fileName = match[1].trim();
+      let fileName = match[1].trim();
       const location = match[2]?.trim();
+
+      // If it's a full path, use directly
+      if (fileName.startsWith('/') || fileName.startsWith('~/') || fileName.startsWith('./')) {
+        return `open "${fileName}"`;
+      }
 
       // If location specified, search there
       if (location) {
-        const locationPath = location === 'desktop' ? '~/Desktop' :
-                             location === 'downloads' ? '~/Downloads' :
-                             location === 'documents' ? '~/Documents' :
-                             location === 'home' ? '~' :
-                             location.startsWith('/') || location.startsWith('~') ? location : `~/${location}`;
+        const locationPath = location.startsWith('/') || location.startsWith('~') ? location : `~/${location}`;
         // Find file matching pattern in specified location and open it
-        return `file=$(find ${locationPath} -maxdepth 1 -type f -iname "*${fileName}*" | head -1) && [ -n "$file" ] && open "$file" || echo "File not found: ${fileName}"`;
+        return `file=$(find ${locationPath} -type f -iname "*${fileName}*" 2>/dev/null | head -1); if [ -n "$file" ]; then open "$file"; else echo "File not found: ${fileName} in ${location}"; fi`;
       }
 
-      // No location specified - search common locations
-      return `file=$(find ~/Desktop ~/Downloads ~/Documents ~ . -maxdepth 1 -type f -iname "*${fileName}*" 2>/dev/null | head -1) && [ -n "$file" ] && open "$file" || echo "File not found: ${fileName}"`;
+      // No location specified - search from home directory
+      return `file=$(find ~ -type f -iname "*${fileName}*" 2>/dev/null | head -1); if [ -n "$file" ]; then open "$file"; else echo "File not found: ${fileName}"; fi`;
     }
 
     // "search for X in Y" → "grep -r X Y"

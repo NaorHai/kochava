@@ -83,12 +83,11 @@ EXAMPLES - Write operations:
 "make directory logs" → mkdir logs
 
 EXAMPLES - Open operations:
-"open file.txt" → open file.txt
-"open document.pdf" → open document.pdf
-"open report.docx" → open report.docx
-"open image.png" → open image.png
+"open file.txt" → file=$(find ~ -type f -iname "*file.txt*" 2>/dev/null | head -1); if [ -n "$file" ]; then open "$file"; else echo "File not found: file.txt"; fi
+"open fib" → file=$(find ~ -type f -iname "*fib*" 2>/dev/null | head -1); if [ -n "$file" ]; then open "$file"; else echo "File not found: fib"; fi
+"open document" → file=$(find ~ -type f -iname "*document*" 2>/dev/null | head -1); if [ -n "$file" ]; then open "$file"; else echo "File not found: document"; fi
 "open current directory" → open .
-"open desktop" → open ~/Desktop
+"open home" → open ~
 
 REQUEST: ${naturalLanguage}
 COMMAND:`;
