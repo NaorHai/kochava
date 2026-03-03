@@ -28,6 +28,18 @@
       "name": "nomic-embed-text",
       "purpose": "Code and text embeddings for retrieval",
       "dimensions": 768
+    },
+    "vision": {
+      "name": "llama3.2-vision:11b",
+      "purpose": "Vision tasks - image understanding, OCR, screenshot analysis, UI reasoning (Claude compatibility)",
+      "maxTokens": 4096,
+      "temperature": 0.2
+    },
+    "computerUse": {
+      "name": "llama3.2-vision:11b",
+      "purpose": "Computer use - GUI interaction, screen understanding, automation (Claude compatibility)",
+      "maxTokens": 4096,
+      "temperature": 0.2
     }
   },
   "downloadOrder": [
@@ -37,7 +49,10 @@
     "nomic-embed-text",
     "qwen2.5:14b",
     "qwen2.5-coder:14b",
-    "llama3.2:3b"
+    "llama3.2-vision:11b",
+    "llama3.2:3b",
+    "llava:13b",
+    "bakllava"
   ],
   "availableModels": {
     "codeEditors": [
@@ -157,6 +172,52 @@
         "size": "670MB",
         "recommended": false
       }
+    ],
+    "vision": [
+      {
+        "name": "llama3.2-vision:11b",
+        "description": "Llama 3.2 Vision - Multimodal model for image understanding, OCR, screenshot analysis (Claude compatibility)",
+        "size": "7.9GB",
+        "recommended": true,
+        "capabilities": ["image-understanding", "ocr", "visual-reasoning", "screenshot-analysis"]
+      },
+      {
+        "name": "llava:13b",
+        "description": "LLaVA 13B - Strong vision-language model for detailed image analysis",
+        "size": "8GB",
+        "recommended": false,
+        "capabilities": ["image-understanding", "detailed-analysis", "visual-qa"]
+      },
+      {
+        "name": "llava:7b",
+        "description": "LLaVA 7B - Faster vision-language model",
+        "size": "4.7GB",
+        "recommended": false,
+        "capabilities": ["image-understanding", "visual-qa"]
+      },
+      {
+        "name": "bakllava",
+        "description": "BakLLaVA - Vision model with strong OCR capabilities",
+        "size": "4.7GB",
+        "recommended": false,
+        "capabilities": ["ocr", "document-understanding", "visual-qa"]
+      }
+    ],
+    "computerUse": [
+      {
+        "name": "llama3.2-vision:11b",
+        "description": "Llama 3.2 Vision - GUI interaction, screen understanding, automation (Claude computer use compatibility)",
+        "size": "7.9GB",
+        "recommended": true,
+        "capabilities": ["screen-understanding", "gui-reasoning", "ui-navigation", "automation"]
+      },
+      {
+        "name": "llava:13b",
+        "description": "LLaVA 13B - Alternative for computer use tasks with detailed visual understanding",
+        "size": "8GB",
+        "recommended": false,
+        "capabilities": ["screen-understanding", "gui-reasoning"]
+      }
     ]
   },
   "profiles": {
@@ -203,6 +264,31 @@
         "classifier": "phi3",
         "embedding": "nomic-embed-text"
       }
+    },
+    "claude-compatible": {
+      "name": "Claude Compatible",
+      "description": "Full multimodal capabilities matching Claude - vision, computer use, coding, reasoning",
+      "models": {
+        "codeEditor": "qwen2.5-coder:14b",
+        "compressor": "llama3.1:8b",
+        "general": "qwen2.5:14b",
+        "classifier": "phi3",
+        "embedding": "mxbai-embed-large",
+        "vision": "llama3.2-vision:11b",
+        "computerUse": "llama3.2-vision:11b"
+      },
+      "capabilities": [
+        "text-generation",
+        "code-generation",
+        "image-understanding",
+        "screenshot-analysis",
+        "computer-use",
+        "gui-interaction",
+        "ocr",
+        "visual-reasoning",
+        "tool-use",
+        "mcp-integration"
+      ]
     }
   }
 }
