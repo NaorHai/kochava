@@ -44,24 +44,24 @@ export class ToolExecutor {
           // Extract and execute bash commands directly
           const bashCommands = this.extractBashCommands(skillContent);
 
-          logger.debug('Extracted bash commands', {
-            skill: skill.name,
-            commandCount: bashCommands.length
-          });
+          logger.info(`>>> BASH SKILL DETECTED: ${skill.name}, commands: ${bashCommands.length}`);
 
           if (bashCommands.length > 0) {
-            logger.debug('Executing bash commands from skill', {
-              skill: skill.name,
-              commandCount: bashCommands.length
-            });
+            logger.info(`>>> EXECUTING BASH DIRECTLY for ${skill.name}`);
 
-            return await this.executeBashCommands(bashCommands, skill.name);
+            const result = await this.executeBashCommands(bashCommands, skill.name);
+            logger.info(`>>> BASH EXECUTION RESULT:`, { success: result.success, hasOutput: !!result.output, outputLength: result.output?.length || 0 });
+            return result;
+          } else {
+            logger.warn(`>>> NO BASH COMMANDS FOUND for ${skill.name}`);
           }
         }
 
         // For non-bash skills, check if they return direct output or instructions
         // Skills that return JSON, structured data, or command output should NOT pass through model
         const isDirectOutput = this.isDirectOutputSkill(skill.name, skillContent);
+
+        logger.info(`>>> SKILL RETURN PATH for ${skill.name}:`, { isDirectOutput, isSkillInstructions: !isDirectOutput });
 
         return {
           success: true,

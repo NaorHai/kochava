@@ -1,6 +1,6 @@
 # Kochava
 
-[![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-1.8.1-blue.svg)](package.json)
 [![CI](https://github.com/NaorHai/kochava/workflows/CI/badge.svg)](https://github.com/NaorHai/kochava/actions)
 [![Tests](https://img.shields.io/badge/tests-91%20passing-success.svg)](#testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)

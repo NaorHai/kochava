@@ -262,6 +262,8 @@ export class LocalExecutor {
     // Execute the skill
     const result = await this.executeToolCall(skillName, { args });
 
+    logger.info(`>>> SKILL RESULT for ${skillName}:`, { success: result.success, isSkillInstructions: result.isSkillInstructions, hasOutput: !!result.output });
+
     if (result.success && result.isSkillInstructions) {
       // We got skill instructions - run them through the model
       logger.debug('Executing skill instructions through model', { skill: skillName });
@@ -326,7 +328,8 @@ export class LocalExecutor {
         };
       }
     } else if (result.success) {
-      // Direct execution success (from claude command)
+      // Direct execution success (bash or direct output skill)
+      logger.info(`>>> DIRECT SKILL SUCCESS for ${skillName}, returning immediately`);
       if (this.skillTracker) {
         this.skillTracker.recordLocalSuccess(skillName);
       }
