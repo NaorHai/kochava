@@ -155,6 +155,46 @@ export class SemanticToolRouter {
   }
 
   /**
+   * Detect if query is a simple bash/file operation that doesn't need tools
+   */
+  private isSimpleBashOperation(query: string): boolean {
+    const lowerQuery = query.toLowerCase().trim();
+
+    // Common bash commands that should execute directly
+    const bashCommands = [
+      'ls', 'list', 'dir', 'pwd', 'cd', 'cat', 'head', 'tail',
+      'grep', 'find', 'echo', 'mkdir', 'rm', 'mv', 'cp', 'touch',
+      'chmod', 'chown', 'du', 'df', 'wc', 'sort', 'uniq'
+    ];
+
+    // Patterns that indicate simple file operations
+    const bashPatterns = [
+      /^(list|show|display|print|get)\s+(files?|directories?|folders?)\s+in/i,
+      /^ls\s+/i,
+      /^cat\s+/i,
+      /^(what|show).+(in|inside)\s+~?\/?[\w\/-]+/i, // "what files in ~/Source"
+      /^(check|show|display)\s+directory/i
+    ];
+
+    // Check if starts with common bash command
+    const startsWithBash = bashCommands.some(cmd => {
+      const regex = new RegExp(`^${cmd}\\b`, 'i');
+      return regex.test(lowerQuery);
+    });
+
+    // Check if matches bash operation pattern
+    const matchesBashPattern = bashPatterns.some(pattern => pattern.test(query));
+
+    if (startsWithBash || matchesBashPattern) {
+      logger.debug('Simple bash operation detected - skipping tool injection', {
+        query: query.substring(0, 100)
+      });
+    }
+
+    return startsWithBash || matchesBashPattern;
+  }
+
+  /**
    * Get lightweight tool descriptions for top-K relevant tools
    */
   async getRelevantToolDescriptions(query: string, topK: number = 10): Promise<string> {
@@ -164,15 +204,20 @@ export class SemanticToolRouter {
       return '';
     }
 
+    // Skip tool injection for simple bash operations
+    if (this.isSimpleBashOperation(query)) {
+      return '';
+    }
+
     const relevantTools = await this.findRelevantTools(query, topK);
 
     if (relevantTools.length === 0) {
       return '';
     }
 
-    // Only inject highly relevant tools (>40% similarity)
+    // Only inject highly relevant tools (>60% similarity) to reduce noise
     const descriptions = relevantTools
-      .filter(t => t.score >= 0.40)
+      .filter(t => t.score >= 0.60)
       .map(t => `- ${t.name}: ${t.description}`)
       .join('\n');
 
@@ -180,7 +225,7 @@ export class SemanticToolRouter {
       return '';
     }
 
-    return `\nAVAILABLE TOOLS (use if relevant to task):\n${descriptions}\n\nTo use a tool: TOOL_USE: tool_name param1="value1" param2="value2"\n`;
+    return `\nAVAILABLE TOOLS (use ONLY if directly needed for this task):\n${descriptions}\n\nIMPORTANT: For simple requests, respond directly without tools. Only use tools when explicitly needed.\nTo use a tool: TOOL_USE: tool_name param1="value1" param2="value2"\n`;
   }
 
   /**

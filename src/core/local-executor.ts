@@ -204,6 +204,9 @@ export class LocalExecutor {
   private async buildPromptWithTools(prompt: string, context?: string, history?: string): Promise<string> {
     let fullPrompt = '';
 
+    // Add system instruction for clarity
+    fullPrompt += `You are a helpful AI assistant. For simple requests (like listing files, showing content, answering questions), respond directly and concisely. Do NOT describe tools or provide documentation unless explicitly asked.\n`;
+
     // Use semantic tool router to find relevant tools
     if (this.toolsEnabled && this.semanticToolRouter.isInitialized()) {
       const relevantTools = await this.semanticToolRouter.getRelevantToolDescriptions(prompt, 10);
@@ -222,8 +225,8 @@ export class LocalExecutor {
       fullPrompt += `\nContext:\n${context}\n`;
     }
 
-    // Add user prompt
-    fullPrompt += `\nTask:\n${prompt}\n`;
+    // Add user prompt with clear instruction
+    fullPrompt += `\nTask:\n${prompt}\n\nProvide a direct, helpful response. If this is a simple request (file operations, questions, etc.), answer directly without using tools or describing them.\n`;
 
     return fullPrompt;
   }
