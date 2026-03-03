@@ -1,0 +1,21 @@
+# CODEOWNERS file
+# This file defines who owns what in this repository
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global owner - all files require review from @NaorHai
+* @NaorHai
+
+# Core functionality
+/src/core/** @NaorHai
+/src/interfaces/** @NaorHai
+
+# Configuration files
+*.json @NaorHai
+*.yaml @NaorHai
+*.yml @NaorHai
+
+# Documentation
+*.md @NaorHai
+
+# Tests
+/test/** @NaorHai
