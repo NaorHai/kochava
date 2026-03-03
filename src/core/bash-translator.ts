@@ -45,6 +45,7 @@ CRITICAL RULES:
 - ONE command per line - take the FIRST line only
 - "list" or "show" = list files (NO wc -l)
 - "how many" or "count" = count files (USE wc -l)
+- "open" = open command (macOS/Linux)
 - "rename" = mv command
 - "move" = mv command
 - "delete" or "remove" = rm command
@@ -55,12 +56,12 @@ CRITICAL RULES:
 
 EXAMPLES - Read operations:
 "show me all python files" → find . -name "*.py"
-"list images on desktop" → ls -1 ~/Desktop 2>/dev/null | grep -iE '\\.(jpg|png|gif|jpeg|bmp)$'
-"list files on desktop" → ls -1 ~/Desktop
-"show files on downloads" → ls -1 ~/Downloads
-"how many images in desktop" → ls -1 ~/Desktop 2>/dev/null | grep -iE '\\.(jpg|png|gif|jpeg|bmp|pdf)$' | wc -l
-"count files in downloads" → ls -1 ~/Downloads | wc -l
-"how many files in downloads" → ls -1 ~/Downloads | wc -l
+"list images on desktop" → find ~/Desktop -maxdepth 1 -type f 2>/dev/null | grep -iE '\\.(jpg|png|gif|jpeg|bmp)$'
+"list files on desktop" → find ~/Desktop -maxdepth 1 -type f
+"show files on downloads" → find ~/Downloads -maxdepth 1 -type f
+"how many images in desktop" → find ~/Desktop -maxdepth 1 -type f 2>/dev/null | grep -iE '\\.(jpg|png|gif|jpeg|bmp|pdf)$' | wc -l
+"count files in downloads" → find ~/Downloads -maxdepth 1 -type f | wc -l
+"how many files in downloads" → find ~/Downloads -maxdepth 1 -type f | wc -l
 "find large files bigger than 100MB" → find . -type f -size +100M
 "count lines in all javascript files" → find . -name "*.js" -exec wc -l {} +
 "show disk usage" → df -h
@@ -80,6 +81,14 @@ EXAMPLES - Write operations:
 "create a file called test.txt" → touch test.txt
 "create folder named data" → mkdir data
 "make directory logs" → mkdir logs
+
+EXAMPLES - Open operations:
+"open file.txt" → open file.txt
+"open document.pdf" → open document.pdf
+"open report.docx" → open report.docx
+"open image.png" → open image.png
+"open current directory" → open .
+"open desktop" → open ~/Desktop
 
 REQUEST: ${naturalLanguage}
 COMMAND:`;
@@ -156,7 +165,7 @@ COMMAND:`;
       'ls', 'cat', 'grep', 'find', 'head', 'tail', 'wc', 'du', 'df',
       'ps', 'top', 'pwd', 'echo', 'which', 'whereis', 'file', 'stat',
       'cd', 'mkdir', 'touch', 'cp', 'mv', 'rm', 'chmod', 'chown',
-      'git', 'npm', 'node', 'python', 'docker', 'curl', 'wget'
+      'open', 'xdg-open', 'git', 'npm', 'node', 'python', 'docker', 'curl', 'wget'
     ];
 
     const firstWord = firstLine.split(/\s+/)[0].toLowerCase();
