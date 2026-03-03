@@ -165,24 +165,25 @@ export class ComputerUseExecutor {
     // These patterns handle common cases as a safety net
     const lowerPrompt = prompt.toLowerCase();
 
-    // "list [all/the] files in X" → "ls -la X"
+    // "list [all/the] files in X" → "ls -1 X" (includes both files and directories)
     // Allows: "list files in X", "list all files in X", "list the files in X", "show files in X"
     let match = lowerPrompt.match(/(?:list|show|display)\s+(?:all\s+|the\s+)?files?\s+in\s+(.+)/i);
     if (match) {
       const path = match[1].trim();
       // Handle relative paths like "Downloads" → "~/Downloads"
       const fullPath = path.startsWith('/') || path.startsWith('~') ? path : `~/${path}`;
-      return `ls -la ${fullPath}`;
+      return `ls -1 ${fullPath}`;
     }
 
-    // "list [all] X files" → "ls -la ~/X"
+    // "list [all] X files" → "ls -1 ~/X" (includes both files and directories)
     // Allows: "list downloads files", "list all downloads files", "show documents files"
     match = lowerPrompt.match(/(?:list|show|display)\s+(?:all\s+)?(\w+)\s+files?/i);
     if (match) {
       const dirName = match[1].trim();
-      // Convert to proper path
-      const fullPath = `~/${dirName}`;
-      return `ls -la ${fullPath}`;
+      // Convert to proper path (capitalize common folders)
+      const properName = dirName.charAt(0).toUpperCase() + dirName.slice(1);
+      const fullPath = `~/${properName}`;
+      return `ls -1 ${fullPath}`;
     }
 
     // "what's in X" → "ls -la X"
@@ -201,14 +202,44 @@ export class ComputerUseExecutor {
       return `ls -la ${fullPath}`;
     }
 
-    // "read file X" → "cat X"
+    // "read file X" → find and cat file
     match = lowerPrompt.match(/(?:read|show|display|cat|view)\s+(?:file\s+|the\s+file\s+)?(.+)/i);
     if (match) {
-      const file = match[1].trim();
-      // Only if it looks like a file path
-      if (file.includes('/') || file.includes('.')) {
-        return `cat ${file}`;
+      const fileName = match[1].trim();
+
+      // If it's a full path or has extension, use directly
+      if (fileName.startsWith('/') || fileName.startsWith('~') || fileName.startsWith('./')) {
+        return `cat ${fileName}`;
       }
+
+      // If it has an extension and no path, check current dir first, then search
+      if (fileName.includes('.')) {
+        return `[ -f "${fileName}" ] && cat "${fileName}" || { file=$(find ~/Desktop ~/Downloads ~/Documents ~ . -maxdepth 1 -type f -iname "*${fileName}*" 2>/dev/null | head -1) && [ -n "$file" ] && cat "$file" || echo "File not found: ${fileName}"; }`;
+      }
+
+      // No extension - search for matching files in common locations
+      return `file=$(find ~/Desktop ~/Downloads ~/Documents ~ . -maxdepth 1 -type f -iname "*${fileName}*" 2>/dev/null | head -1) && [ -n "$file" ] && cat "$file" || echo "File not found: ${fileName}"`;
+    }
+
+    // "open X [in Y]" → find and open file
+    match = prompt.match(/open\s+(.+?)(?:\s+(?:in|on|from)\s+(.+))?$/i);
+    if (match) {
+      const fileName = match[1].trim();
+      const location = match[2]?.trim();
+
+      // If location specified, search there
+      if (location) {
+        const locationPath = location === 'desktop' ? '~/Desktop' :
+                             location === 'downloads' ? '~/Downloads' :
+                             location === 'documents' ? '~/Documents' :
+                             location === 'home' ? '~' :
+                             location.startsWith('/') || location.startsWith('~') ? location : `~/${location}`;
+        // Find file matching pattern in specified location and open it
+        return `file=$(find ${locationPath} -maxdepth 1 -type f -iname "*${fileName}*" | head -1) && [ -n "$file" ] && open "$file" || echo "File not found: ${fileName}"`;
+      }
+
+      // No location specified - search common locations
+      return `file=$(find ~/Desktop ~/Downloads ~/Documents ~ . -maxdepth 1 -type f -iname "*${fileName}*" 2>/dev/null | head -1) && [ -n "$file" ] && open "$file" || echo "File not found: ${fileName}"`;
     }
 
     // "search for X in Y" → "grep -r X Y"
