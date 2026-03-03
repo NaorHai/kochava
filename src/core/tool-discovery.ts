@@ -41,6 +41,14 @@ export class ToolDiscovery {
     const skills = await this.discoverSkills();
     const mcpTools = await this.discoverMCPs();
 
+    // Add built-in shell tool for bash command execution
+    const builtInShellTool: SkillDefinition = {
+      name: 'shell',
+      description: 'Execute bash/shell commands directly (ls, cat, grep, find, etc.). Use for file operations, system commands, and terminal tasks.',
+      argumentHint: 'command="bash command to execute"'
+    };
+    skills.unshift(builtInShellTool); // Add at front for high priority
+
     this.catalog = {
       skills,
       mcpTools,
@@ -49,7 +57,8 @@ export class ToolDiscovery {
 
     logger.debug('Tool discovery complete', {
       skills: skills.length,
-      mcpTools: mcpTools.length
+      mcpTools: mcpTools.length,
+      builtInTools: 1
     });
 
     return this.catalog;

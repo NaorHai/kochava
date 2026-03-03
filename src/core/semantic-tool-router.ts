@@ -204,9 +204,14 @@ export class SemanticToolRouter {
       return '';
     }
 
-    // Skip tool injection for simple bash operations
+    // For simple bash operations, inject ONLY the shell tool with clear instructions
     if (this.isSimpleBashOperation(query)) {
-      return '';
+      return `\nAVAILABLE TOOLS:
+- shell: Execute bash/shell commands directly (ls, cat, grep, find, etc.). Use for file operations, system commands, and terminal tasks.
+
+IMPORTANT: Use the shell tool to execute the command. Format: TOOL_USE: shell command="your bash command here"
+Example: TOOL_USE: shell command="ls ~/Source"
+`;
     }
 
     const relevantTools = await this.findRelevantTools(query, topK);

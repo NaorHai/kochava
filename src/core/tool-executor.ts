@@ -21,6 +21,11 @@ export class ToolExecutor {
     try {
       logger.debug('Executing skill', { skill: skill.name, args });
 
+      // Handle built-in shell tool for direct bash execution
+      if (skill.name === 'shell') {
+        return await this.executeShellCommand(args);
+      }
+
       // Read skill definition from .md file
       const skillContent = await this.readSkillDefinition(skill.name);
 
@@ -150,6 +155,64 @@ export class ToolExecutor {
     }
 
     return commands;
+  }
+
+  /**
+   * Execute a shell command directly (built-in shell tool)
+   */
+  private async executeShellCommand(args: string): Promise<ToolExecutionResult> {
+    try {
+      // Parse command from args (supports command="..." or just plain command)
+      let command = args.trim();
+
+      // Extract from command="..." format if present
+      const commandMatch = args.match(/command=["']?([^"']+)["']?/);
+      if (commandMatch) {
+        command = commandMatch[1].trim();
+      }
+
+      // Remove any remaining quotes
+      command = command.replace(/^["']|["']$/g, '');
+
+      if (!command) {
+        return {
+          success: false,
+          output: '',
+          error: 'No command provided'
+        };
+      }
+
+      logger.debug('Executing shell command', {
+        command: command.substring(0, 200)
+      });
+
+      const { stdout, stderr } = await execAsync(command, {
+        timeout: 30000, // 30 second timeout
+        maxBuffer: 1024 * 1024 * 10, // 10MB buffer
+        shell: '/bin/bash',
+        cwd: process.env.HOME // Execute from home directory by default
+      });
+
+      const output = stdout.trim() || stderr.trim();
+
+      return {
+        success: true,
+        output: output || 'Command executed successfully (no output)'
+      };
+    } catch (error: any) {
+      const errorMsg = error.stderr?.trim() || error.message || 'Command execution failed';
+
+      logger.debug('Shell command failed', {
+        args: args.substring(0, 100),
+        error: errorMsg
+      });
+
+      return {
+        success: false,
+        output: errorMsg,
+        error: errorMsg
+      };
+    }
   }
 
   /**
