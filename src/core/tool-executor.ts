@@ -390,22 +390,21 @@ export class ToolExecutor {
     const [, toolName, paramsStr] = match;
     const params: Record<string, any> = {};
 
-    // Parse key=value pairs
-    const paramMatches = paramsStr.matchAll(/(\w+)=["']?([^"'\s]+)["']?/g);
-    for (const paramMatch of paramMatches) {
-      const [, key, value] = paramMatch;
+    // Parse key=value pairs with proper quoted string handling
+    // Matches: key="quoted value with spaces" or key=unquoted_value
+    const paramRegex = /(\w+)=(?:"([^"]*)"|'([^']*)'|([^\s]+))/g;
+    let paramMatch;
+
+    while ((paramMatch = paramRegex.exec(paramsStr)) !== null) {
+      const key = paramMatch[1];
+      // Value could be in group 2 (double quotes), 3 (single quotes), or 4 (unquoted)
+      const value = paramMatch[2] || paramMatch[3] || paramMatch[4];
       params[key] = value;
     }
 
-    // If no key=value pairs, treat entire string as arguments
+    // If no key=value pairs found, treat entire string as arguments
     if (Object.keys(params).length === 0) {
       params.args = paramsStr.trim();
-    }
-
-    // Also check for quoted strings
-    const quotedMatch = paramsStr.match(/["']([^"']+)["']/);
-    if (quotedMatch && !params.args) {
-      params.query = quotedMatch[1];
     }
 
     return { tool: toolName, params };
