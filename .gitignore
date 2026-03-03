@@ -1,23 +1,26 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+*.js.map
+
 # Environment
 .env
 .env.local
-
-# Node
-node_modules/
-dist/
-*.log
-
-# Models (managed by Ollama)
-models/*
-!models/.gitkeep
-
-# Embeddings
-embeddings/*
-!embeddings/.gitkeep
+.env.*.local
 
 # Logs
-logs/*
-!logs/.gitkeep
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test results
+test-results*.json
 
 # OS
 .DS_Store
@@ -30,5 +33,14 @@ Thumbs.db
 *.swo
 *~
 
-# Build
-*.tsbuildinfo
+# Session data
+sessions/
+*.session
+
+# Temporary
+tmp/
+temp/
+.cache/
+
+# Large test files (keep structure, ignore binaries)
+test-data/large/*.bin

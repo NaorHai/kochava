@@ -26,7 +26,25 @@ export class TaskRouter {
   async route(context: TaskContext): Promise<RoutingDecision> {
     const startTime = Date.now();
 
-    // First check if this is a skill invocation
+    // IMPORTANT: Check FastRouter FIRST before skill classifier
+    // This prevents bash commands like "rename", "move", "delete" from being misclassified as skills
+    const fastTarget = this.fastRouter.tryFastRoute(context);
+
+    if (fastTarget) {
+      // Fast route succeeded - skip classifier
+      const quickComplexity = this.estimateComplexity(fastTarget, context);
+
+      return {
+        target: fastTarget,
+        taskType: this.inferTaskType(fastTarget),
+        complexity: quickComplexity,
+        confidence: 0.85, // High confidence from heuristics
+        reasoning: `Fast-path routing based on heuristics`,
+        shouldEscalate: false
+      };
+    }
+
+    // Check if this is a skill invocation (AFTER FastRouter check)
     const skillClassification = this.skillClassifier.classify(context.input);
 
     if (skillClassification.isSkill) {
@@ -41,23 +59,6 @@ export class TaskRouter {
         complexity: skillClassification.skillType === 'simple' ? 2 : 6,
         confidence: skillClassification.confidence,
         reasoning: `Skill '${skillClassification.skillName}' invocation`,
-        shouldEscalate: false
-      };
-    }
-
-    // Try fast-path heuristic routing first
-    const fastTarget = this.fastRouter.tryFastRoute(context);
-
-    if (fastTarget) {
-      // Fast route succeeded - skip classifier
-      const quickComplexity = this.estimateComplexity(fastTarget, context);
-
-      return {
-        target: fastTarget,
-        taskType: this.inferTaskType(fastTarget),
-        complexity: quickComplexity,
-        confidence: 0.85, // High confidence from heuristics
-        reasoning: `Fast-path routing based on heuristics`,
         shouldEscalate: false
       };
     }
@@ -113,12 +114,13 @@ export class TaskRouter {
     return 3;
   }
 
-  private inferTaskType(target: RouteTarget): 'trivial_edit' | 'explanation' | 'architecture' {
-    const mapping: Record<RouteTarget, 'trivial_edit' | 'explanation' | 'architecture'> = {
+  private inferTaskType(target: RouteTarget): 'trivial_edit' | 'explanation' | 'architecture' | 'bash_operation' {
+    const mapping: Record<RouteTarget, 'trivial_edit' | 'explanation' | 'architecture' | 'bash_operation'> = {
       'claude': 'architecture',
       'local_code': 'trivial_edit',
       'local_general': 'explanation',
-      'local_compress': 'explanation'
+      'local_compress': 'explanation',
+      'computer_use': 'bash_operation'
     };
     return mapping[target] || 'explanation';
   }

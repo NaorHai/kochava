@@ -78,7 +78,9 @@ export class ComplexityScorer {
       refactor_small: 4,
       deep_debug: 7,
       architecture: 9,
-      multi_file_reasoning: 8
+      multi_file_reasoning: 8,
+      bash_operation: 1,
+      file_operation: 1
     };
 
     const complexityKeywords = [

@@ -11,6 +11,13 @@ export class FastRouter {
    */
   tryFastRoute(context: TaskContext): RouteTarget | null {
     const input = context.input.toLowerCase();
+    const trimmed = context.input.trim();
+
+    // 0. Bash/file operations → computer_use (HIGHEST PRIORITY)
+    if (this.isBashOperation(trimmed) || this.isFileOperation(input) || this.isWriteOperation(input)) {
+      logger.debug('Fast route: Bash/file/write operation → computer_use');
+      return 'computer_use';
+    }
 
     // 1. Multi-file operations → Claude
     if (context.fileCount && context.fileCount > 3) {
@@ -137,5 +144,124 @@ export class FastRouter {
     const needsInternalKnowledge = internalKnowledgePatterns.some(pattern => pattern.test(input));
 
     return hasToolAction || mentionsService || needsInternalKnowledge;
+  }
+
+  /**
+   * Detect if input is a direct bash command
+   */
+  private isBashOperation(input: string): boolean {
+    const bashCommands = [
+      'ls', 'cat', 'head', 'tail', 'grep', 'find', 'pwd', 'echo',
+      'cd', 'mkdir', 'rm', 'mv', 'cp', 'touch', 'chmod', 'chown',
+      'wc', 'du', 'df', 'ps', 'top', 'which', 'whereis', 'file',
+      'stat', 'date', 'uptime', 'whoami', 'hostname', 'git'
+    ];
+
+    // Check if starts with bash command
+    const firstWord = input.split(/\s+/)[0].toLowerCase();
+    return bashCommands.includes(firstWord);
+  }
+
+  /**
+   * Detect if input is asking about files/directories/system operations
+   * More aggressive to catch any potential bash-related query
+   */
+  private isFileOperation(input: string): boolean {
+    const lowerInput = input.toLowerCase();
+
+    // File/directory keywords (expanded with common file types)
+    const fileKeywords = [
+      'file', 'files', 'directory', 'directories', 'folder', 'folders',
+      'image', 'images', 'photo', 'photos', 'picture', 'pictures', 'pic', 'pics',
+      'video', 'videos', 'movie', 'movies',
+      'pdf', 'pdfs', 'document', 'documents', 'doc', 'docs',
+      'txt', 'csv', 'json', 'xml', 'yaml'
+    ];
+    const hasFileKeyword = fileKeywords.some(kw => lowerInput.includes(kw));
+
+    // System operation verbs (read operations)
+    const readVerbs = ['list', 'show', 'display', 'find', 'search', 'count', 'get', 'view', 'check', 'see', 'name', 'names'];
+
+    // Write/destructive operation verbs
+    const writeVerbs = [
+      'create', 'make', 'mkdir', 'touch',
+      'write', 'save', 'edit', 'modify', 'update', 'change',
+      'delete', 'remove', 'rm', 'del',
+      'move', 'mv', 'rename',
+      'copy', 'cp', 'duplicate'
+    ];
+
+    const hasSystemVerb = [...readVerbs, ...writeVerbs].some(verb =>
+      new RegExp(`\\b${verb}\\b`).test(lowerInput)
+    );
+
+    // System keywords that suggest bash operations
+    const systemKeywords = [
+      'disk', 'usage', 'space', 'size', 'large', 'small',
+      'process', 'running', 'memory', 'cpu',
+      'hidden', 'recent', 'modified', 'created',
+      'python', 'javascript', 'java', 'code', 'source',
+      'grep', 'search', 'find', 'locate',
+      'download', 'downloads', 'document', 'documents', 'desktop', 'home'
+    ];
+    const hasSystemKeyword = systemKeywords.some(kw => lowerInput.includes(kw));
+
+    // Specific patterns (enhanced with counting and write patterns)
+    const patterns = [
+      // Read operations
+      /\bwhat('s| is| are)\s+(in|inside)\b/i,
+      /\bcount\s+\w+/i,
+      /\bfind\s+\w+/i,
+      /\bsearch\s+for\b/i,
+      /\bshow\s+me\b/i,
+      /\bhow\s+many\b/i,           // "how many files/images/etc"
+      /\bhow\s+much\b/i,            // "how much space/disk/etc"
+      /\bwhat.*going\s+on\b/i,     // "what's going on" (system status)
+      /\bwhat\s+(are\s+)?(their|the)\s+names?\b/i,  // "what are their names", "what are the names"
+      /\blist\s+(the\s+)?names?\b/i,                 // "list names", "list the names"
+
+      // Write/destructive operations
+      /\bcreate\s+(a\s+)?(file|folder|directory)\b/i,  // "create a file/folder"
+      /\bmake\s+(a\s+)?(file|folder|directory)\b/i,    // "make a folder"
+      /\bwrite\s+to\b/i,                                // "write to file"
+      /\bsave\s+(to|in|as)\b/i,                        // "save to file"
+      /\bdelete\s+(the\s+)?(file|folder)\b/i,          // "delete the file"
+      /\bremove\s+(the\s+)?(file|folder)\b/i,          // "remove the folder"
+      /\bmove\s+\S+/i,                                  // "move file" or "move file to"
+      /\brename\s+\S+/i,                                // "rename file" or "rename file to"
+      /\bcopy\s+\S+/i                                   // "copy file" or "copy file to"
+    ];
+    const matchesPattern = patterns.some(pattern => pattern.test(input));
+
+    // Route to computer_use if it looks like a system/file operation
+    return (hasFileKeyword && hasSystemVerb) ||
+           (hasSystemVerb && hasSystemKeyword) ||
+           hasFileKeyword ||  // Any file type mention
+           matchesPattern;
+  }
+
+  /**
+   * Detect write/destructive operations
+   */
+  private isWriteOperation(input: string): boolean {
+    const lowerInput = input.toLowerCase();
+
+    // Write/destructive operation keywords
+    const writeKeywords = [
+      'create', 'make', 'mkdir', 'touch',
+      'write', 'save', 'edit', 'modify', 'update', 'change',
+      'delete', 'remove', 'rm', 'del',
+      'move', 'mv', 'rename',
+      'copy', 'cp', 'duplicate'
+    ];
+
+    // Check if any write keyword exists
+    const result = writeKeywords.some(kw => new RegExp(`\\b${kw}\\b`).test(lowerInput));
+
+    if (result) {
+      logger.debug('isWriteOperation matched', { input: input.substring(0, 100) });
+    }
+
+    return result;
   }
 }

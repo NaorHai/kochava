@@ -41,6 +41,18 @@
       "route": "claude",
       "maxComplexity": 7,
       "keywords": ["across files", "multiple files", "entire codebase", "system-wide"]
+    },
+    "bash_operation": {
+      "description": "Execute bash commands, shell scripts, system operations",
+      "route": "computer_use",
+      "maxComplexity": 3,
+      "keywords": ["ls", "cat", "grep", "find", "pwd", "bash", "shell", "command", "execute"]
+    },
+    "file_operation": {
+      "description": "File and directory operations (list, read, search)",
+      "route": "computer_use",
+      "maxComplexity": 2,
+      "keywords": ["list files", "show directory", "what's in", "files in", "read file", "check directory"]
     }
   },
   "complexityThresholds": {

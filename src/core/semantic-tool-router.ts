@@ -209,7 +209,11 @@ export class SemanticToolRouter {
       return `\nAVAILABLE TOOLS:
 - shell: Execute bash/shell commands directly (ls, cat, grep, find, etc.). Use for file operations, system commands, and terminal tasks.
 
-IMPORTANT: Use the shell tool to execute the command. Format: TOOL_USE: shell command="your bash command here"
+CRITICAL: To execute a bash command, use ONE of these formats:
+1. TOOL_USE: shell command="your command here"
+2. Put the command in a bash code block: \`\`\`bash\nyour command\n\`\`\`
+3. Reply with JUST the command (e.g., "ls ~/Source")
+
 Example: TOOL_USE: shell command="ls ~/Source"
 `;
     }

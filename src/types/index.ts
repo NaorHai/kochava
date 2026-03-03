@@ -5,9 +5,11 @@ export type TaskType =
   | 'refactor_small'
   | 'deep_debug'
   | 'architecture'
-  | 'multi_file_reasoning';
+  | 'multi_file_reasoning'
+  | 'bash_operation'
+  | 'file_operation';
 
-export type RouteTarget = 'local_code' | 'local_compress' | 'local_general' | 'claude';
+export type RouteTarget = 'local_code' | 'local_compress' | 'local_general' | 'claude' | 'computer_use';
 
 export interface ClassificationResult {
   taskType: TaskType;

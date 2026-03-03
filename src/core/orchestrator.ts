@@ -1,5 +1,6 @@
 import { TaskRouter } from './router.js';
 import { LocalExecutor } from './local-executor.js';
+import { ComputerUseExecutor } from './computer-use-executor.js';
 import { ClaudeClient } from '../claude/client.js';
 import { ClaudeSupervisor } from '../claude/supervisor.js';
 import { ContextOptimizer } from './context_optimizer.js';
@@ -30,6 +31,7 @@ const __dirname = path.dirname(__filename);
 export class AIOrchestrator {
   private router: TaskRouter;
   private localExecutor: LocalExecutor;
+  private computerUseExecutor: ComputerUseExecutor;
   private claudeClient: ClaudeClient;
   private supervisor: ClaudeSupervisor;
   private contextOptimizer: ContextOptimizer;
@@ -56,6 +58,8 @@ export class AIOrchestrator {
       modelConfig.models.embedding.name,
       enableTools
     );
+
+    this.computerUseExecutor = new ComputerUseExecutor();
 
     const tokenBudget = parseInt(process.env.CLAUDE_TOKEN_BUDGET || '8000', 10);
     this.claudeClient = new ClaudeClient(claudeApiKey, tokenBudget, bedrockBaseURL);
@@ -181,7 +185,17 @@ export class AIOrchestrator {
 
     let response: ModelResponse;
 
-    if (decision.target === 'claude') {
+    if (decision.target === 'computer_use') {
+      // Direct bash execution - no LLM needed
+      // Expand vague queries with conversation context
+      const formattedHistory = this.formatHistoryForLocal(context.history) || '';
+      const expandedInput = this.expandWithContext(input, formattedHistory);
+      logger.debug('Executing with computer-use', {
+        input: input.substring(0, 100),
+        expanded: expandedInput !== input ? expandedInput.substring(0, 100) : 'same'
+      });
+      response = await this.computerUseExecutor.execute(expandedInput);
+    } else if (decision.target === 'claude') {
       try {
         response = await this.executeWithClaude(input, codeContext, context);
       } catch (error: any) {
@@ -205,6 +219,7 @@ export class AIOrchestrator {
     const totalLatency = Date.now() - startTime;
 
     // Record metrics (persisted across sessions)
+    // computer_use and local_* are all free (no API costs)
     const isLocal = decision.target !== 'claude';
     const tokensSaved = isLocal ? Math.ceil(response.tokens * 1.5) : 0;
     await this.metricsManager.recordRequest(isLocal, response.tokens, totalLatency, tokensSaved);
@@ -237,10 +252,13 @@ export class AIOrchestrator {
     );
 
     // Use the original router decision for fallback (only local targets)
-    const fallbackTarget =
-      decision.target === 'claude'
-        ? 'local_code'
-        : decision.target;
+    let fallbackTarget: 'local_code' | 'local_compress' | 'local_general' = 'local_code';
+
+    if (decision.target === 'computer_use') {
+      fallbackTarget = 'local_general'; // Computer use tasks fall back to general model
+    } else if (decision.target !== 'claude') {
+      fallbackTarget = decision.target as 'local_code' | 'local_compress' | 'local_general';
+    }
 
     try {
       const formattedHistory = this.formatHistoryForLocal(context.history);
@@ -458,5 +476,42 @@ export class AIOrchestrator {
    */
   async clearRateLimit(target: RouteTarget): Promise<void> {
     await this.rateLimitCache.clearRateLimit(target);
+  }
+
+  /**
+   * Expand vague queries with conversation context
+   */
+  private expandWithContext(input: string, history: string): string {
+    const lowerInput = input.toLowerCase();
+    const hasVagueReference = /\b(their|them|those|these|its?)\b/i.test(input);
+
+    if (!hasVagueReference) return input;
+
+    const lastMessages = history.split('\n').slice(-10);
+    let context = { location: null as string | null, fileType: null as string | null };
+
+    for (const line of lastMessages) {
+      if (/desktop/i.test(line)) context.location = 'desktop';
+      else if (/downloads?/i.test(line)) context.location = 'downloads';
+      else if (/documents?/i.test(line)) context.location = 'documents';
+
+      if (/images?|photos?|pictures?/i.test(line)) context.fileType = 'images';
+      else if (/pdfs?/i.test(line)) context.fileType = 'pdfs';
+      else if (/files?/i.test(line)) context.fileType = 'files';
+    }
+
+    if (context.location || context.fileType) {
+      const fileTypeStr = context.fileType || 'files';
+      const locationStr = context.location ? ` on ${context.location}` : '';
+
+      if (/what\s+(are|is)\s+(their|the)\s+names?/i.test(lowerInput)) {
+        return `list ${fileTypeStr}${locationStr}`;
+      }
+      if (/(?:show|list|display)\s+them/i.test(lowerInput)) {
+        return `list ${fileTypeStr}${locationStr}`;
+      }
+    }
+
+    return input;
   }
 }

@@ -383,31 +383,51 @@ export class ToolExecutor {
   }
 
   parseToolCall(response: string): { tool: string; params: Record<string, any> } | null {
-    // Parse "TOOL_USE: tool_name param1=value1 param2=value2"
-    const match = response.match(/TOOL_USE:\s*([\w-]+)\s+(.+)/i);
-    if (!match) return null;
+    // STANDARD FORMAT: "TOOL_USE: tool_name param1=value1 param2=value2"
+    const standardMatch = response.match(/TOOL_USE:\s*([\w-]+)\s+(.+)/i);
+    if (standardMatch) {
+      const [, toolName, paramsStr] = standardMatch;
+      const params: Record<string, any> = {};
 
-    const [, toolName, paramsStr] = match;
-    const params: Record<string, any> = {};
+      // Parse key=value pairs with proper quoted string handling
+      // Matches: key="quoted value with spaces" or key=unquoted_value
+      const paramRegex = /(\w+)=(?:"([^"]*)"|'([^']*)'|([^\s]+))/g;
+      let paramMatch;
 
-    // Parse key=value pairs with proper quoted string handling
-    // Matches: key="quoted value with spaces" or key=unquoted_value
-    const paramRegex = /(\w+)=(?:"([^"]*)"|'([^']*)'|([^\s]+))/g;
-    let paramMatch;
+      while ((paramMatch = paramRegex.exec(paramsStr)) !== null) {
+        const key = paramMatch[1];
+        // Value could be in group 2 (double quotes), 3 (single quotes), or 4 (unquoted)
+        const value = paramMatch[2] || paramMatch[3] || paramMatch[4];
+        params[key] = value;
+      }
 
-    while ((paramMatch = paramRegex.exec(paramsStr)) !== null) {
-      const key = paramMatch[1];
-      // Value could be in group 2 (double quotes), 3 (single quotes), or 4 (unquoted)
-      const value = paramMatch[2] || paramMatch[3] || paramMatch[4];
-      params[key] = value;
+      // If no key=value pairs found, treat entire string as arguments
+      if (Object.keys(params).length === 0) {
+        params.args = paramsStr.trim();
+      }
+
+      return { tool: toolName, params };
     }
 
-    // If no key=value pairs found, treat entire string as arguments
-    if (Object.keys(params).length === 0) {
-      params.args = paramsStr.trim();
+    // ALTERNATIVE FORMAT 1: "shell: command"
+    const shellMatch1 = response.match(/(?:^|\n)shell:\s*(.+?)(?:\n|$)/im);
+    if (shellMatch1) {
+      return {
+        tool: 'shell',
+        params: { command: shellMatch1[1].trim() }
+      };
     }
 
-    return { tool: toolName, params };
+    // ALTERNATIVE FORMAT 2: "execute: command" or "run: command"
+    const shellMatch2 = response.match(/(?:^|\n)(?:execute|run):\s*(.+?)(?:\n|$)/im);
+    if (shellMatch2) {
+      return {
+        tool: 'shell',
+        params: { command: shellMatch2[1].trim() }
+      };
+    }
+
+    return null;
   }
 
   formatToolResult(tool: string, result: ToolExecutionResult): string {
