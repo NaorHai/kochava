@@ -1,6 +1,7 @@
 import { TaskRouter } from './router.js';
 import { LocalExecutor } from './local-executor.js';
 import { ComputerUseExecutor } from './computer-use-executor.js';
+import { UnifiedExecutor } from './unified-executor.js';
 import { ClaudeClient } from '../claude/client.js';
 import { ClaudeSupervisor } from '../claude/supervisor.js';
 import { ContextOptimizer } from './context_optimizer.js';
@@ -32,6 +33,7 @@ export class AIOrchestrator {
   private router: TaskRouter;
   private localExecutor: LocalExecutor;
   private computerUseExecutor: ComputerUseExecutor;
+  private unifiedExecutor: UnifiedExecutor;
   private claudeClient: ClaudeClient;
   private supervisor: ClaudeSupervisor;
   private contextOptimizer: ContextOptimizer;
@@ -60,6 +62,7 @@ export class AIOrchestrator {
     );
 
     this.computerUseExecutor = new ComputerUseExecutor();
+    this.unifiedExecutor = new UnifiedExecutor();
 
     const tokenBudget = parseInt(process.env.CLAUDE_TOKEN_BUDGET || '8000', 10);
     this.claudeClient = new ClaudeClient(claudeApiKey, tokenBudget, bedrockBaseURL);
@@ -186,15 +189,15 @@ export class AIOrchestrator {
     let response: ModelResponse;
 
     if (decision.target === 'computer_use') {
-      // Direct bash execution - no LLM needed
-      // Expand vague queries with conversation context
+      // Unified executor: Intelligent task decomposition + multi-step execution
+      // Handles both simple operations (ls, cat) and complex ones (generate code + write to file)
       const formattedHistory = this.formatHistoryForLocal(context.history) || '';
       const expandedInput = this.expandWithContext(input, formattedHistory);
-      logger.debug('Executing with computer-use', {
+      logger.debug('Executing with unified executor', {
         input: input.substring(0, 100),
         expanded: expandedInput !== input ? expandedInput.substring(0, 100) : 'same'
       });
-      response = await this.computerUseExecutor.execute(expandedInput);
+      response = await this.unifiedExecutor.execute(expandedInput);
     } else if (decision.target === 'claude') {
       try {
         response = await this.executeWithClaude(input, codeContext, context);

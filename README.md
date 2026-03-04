@@ -1,6 +1,6 @@
 # Kochava
 
-[![Version](https://img.shields.io/badge/version-1.8.2-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-1.9.0-blue.svg)](package.json)
 [![CI](https://github.com/NaorHai/kochava/workflows/CI/badge.svg)](https://github.com/NaorHai/kochava/actions)
 [![Tests](https://img.shields.io/badge/tests-91%20passing-success.svg)](#testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
@@ -25,7 +25,29 @@
 ╚═══════════════════════════════════════════════════════════════════╝
 ```
 
-## 🎉 What's New in v1.7.0
+## 🎉 What's New in v1.9.0
+
+**Multi-Agent Architecture** - Better than Claude Code
+- ✅ **Intelligent task decomposition** - Knows when to use LLM vs bash vs both
+- ✅ **File operations that actually work** - Creates files WITH content (not empty!)
+- ✅ **Multi-step execution** - Handles "create code.txt with fibonacci" correctly
+- ✅ **Validation at every step** - Ensures operations actually worked
+- ✅ **Detailed progress tracking** - Shows exactly what's happening
+- ✅ **3 new modules**: TaskDecomposer, FileOperations, UnifiedExecutor
+
+**Example - No longer creates EMPTY files:**
+```bash
+$ kochava "create code.txt with fibonacci code"
+
+Created: code.txt, 329 bytes, 13 lines
+✓ Step 1: Code generated (local)
+✓ Step 2: ✓ File created: code.txt
+✓ Step 3: ✓ File validated: code.txt
+
+[qwen2.5-coder:7b • 0 tokens • 1794ms]
+```
+
+**Previously in v1.7.0**
 
 **AI-Powered Bash Translation** - Intelligent, not hard-coded
 - ✅ Handles **ANY** natural language query → bash command
